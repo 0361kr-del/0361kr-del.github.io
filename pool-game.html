@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🎱 포켓볼 물리 실험</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nanum+Round+Square:wght@400;700;800&family=Black+Han+Sans&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; }
+
+  :root {
+    --rail: #5c3d2e;
+    --rail-dark: #3e2723;
+    --gold: #f4a261;
+    --ui-bg: #1a1a2e;
+    --ui-card: #16213e;
+    --ui-accent: #e94560;
+  }
+
+  body {
+    background: var(--ui-bg);
+    font-family: 'Nanum Round Square', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  header {
+    width: 100%;
+    padding: 12px 20px;
+    background: var(--ui-card);
+    border-bottom: 3px solid var(--ui-accent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+
+  header h1 {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 1.4rem;
+    color: var(--gold);
+  }
+
+  header .subtitle {
+    font-size: 0.7rem;
+    color: #8892b0;
+    margin-top: 2px;
+  }
+
+  .score-panel { display: flex; gap: 12px; }
+
+  .score-box {
+    background: var(--ui-bg);
+    border: 2px solid var(--ui-accent);
+    border-radius: 10px;
+    padding: 4px 12px;
+    text-align: center;
+  }
+  .score-box .label { font-size: 0.6rem; color: #8892b0; }
+  .score-box .value { font-size: 1.1rem; font-weight: 800; color: var(--gold); }
+
+  .game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    gap: 14px;
+    width: 100%;
+    max-width: 700px;
+  }
+
+  .table-wrapper {
+    position: relative;
+    border-radius: 16px;
+    box-shadow: 0 0 0 10px var(--rail),
+                0 0 0 20px var(--rail-dark),
+                0 24px 60px rgba(0,0,0,0.8);
+  }
+
+  canvas {
+    display: block;
+    border-radius: 8px;
+  }
+
+  .overlay-tl {
+    position: absolute;
+    top: 8px; left: 8px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 0.65rem;
+    color: #ccd6f6;
+    pointer-events: none;
+    line-height: 1.8;
+  }
+
+  .overlay-tr {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 0.68rem;
+    color: #ccd6f6;
+    pointer-events: none;
+    text-align: right;
+  }
+  .overlay-tr span { color: var(--gold); font-weight: 800; font-size: 1rem; }
+
+  .sink-msg {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(244,162,97,0.97);
+    color: #1a1a2e;
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 1.8rem;
+    padding: 10px 28px;
+    border-radius: 16px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s;
+    z-index: 10;
+    white-space: nowrap;
+  }
+  .sink-msg.show { opacity: 1; }
+
+  .controls {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--ui-card);
+    border-radius: 14px;
+    padding: 10px 16px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .control-icon { font-size: 1.4rem; min-width: 28px; text-align: center; }
+  .control-info { flex: 1; }
+  .ctrl-label { font-size: 0.75rem; color: #8892b0; margin-bottom: 5px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.1);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--ui-accent), var(--gold));
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: white;
+    margin-top: -7px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    border: 3px solid var(--gold);
+  }
+
+  .ctrl-value {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--gold);
+    min-width: 64px;
+    text-align: right;
+  }
+
+  .btn-row { display: flex; gap: 10px; }
+
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Nanum Round Square', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.1s;
+  }
+  .btn:active { transform: scale(0.96); opacity: 0.85; }
+  .btn-reset { background: linear-gradient(135deg, #e94560, #c62a47); color: white; }
+  .btn-hint  { background: linear-gradient(135deg, #f4a261, #e76f51); color: white; }
+
+  .hint-box {
+    width: 100%;
+    background: linear-gradient(135deg, #0f3460, #16213e);
+    border: 2px solid #e94560;
+    border-radius: 14px;
+    padding: 12px 16px;
+    font-size: 0.82rem;
+    color: #ccd6f6;
+    line-height: 1.7;
+    display: none;
+  }
+  .hint-box.visible { display: block; }
+  .hint-box strong { color: var(--gold); }
+
+  .all-clear {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.82);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s;
+    z-index: 20;
+    gap: 10px;
+  }
+  .all-clear.show { opacity: 1; pointer-events: all; }
+  .all-clear .ac-title {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 2.6rem;
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(244,162,97,0.9), 0 0 60px rgba(244,162,97,0.4);
+    animation: pulse 1s ease-in-out infinite alternate;
+  }
+  @keyframes pulse {
+    from { transform: scale(1); }
+    to   { transform: scale(1.06); }
+  }
+  .all-clear .ac-stars { font-size: 2rem; letter-spacing: 6px; }
+  .all-clear .ac-shots {
+    background: rgba(244,162,97,0.15);
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    padding: 10px 28px;
+    text-align: center;
+    margin-top: 4px;
+  }
+  .all-clear .ac-shots .ac-shots-label {
+    font-size: 0.75rem;
+    color: #8892b0;
+  }
+  .all-clear .ac-shots .ac-shots-num {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 2.4rem;
+    color: white;
+    line-height: 1.1;
+  }
+  .all-clear .ac-shots .ac-shots-unit {
+    font-size: 0.8rem;
+    color: #ccd6f6;
+  }
+  .all-clear .ac-msg {
+    font-size: 0.88rem;
+    color: #ccd6f6;
+    margin-top: 2px;
+  }
+  .all-clear .ac-retry {
+    margin-top: 10px;
+    background: linear-gradient(135deg, #e94560, #c62a47);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 32px;
+    font-family: 'Nanum Round Square', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🎱 포켓볼 물리 실험실</h1>
+    <div class="subtitle">힘의 방향 · 세기 · 무게의 관계를 탐구해요!</div>
+  </div>
+  <div class="score-panel">
+    <div class="score-box">
+      <div class="label">넣은 공</div>
+      <div class="value" id="scoreVal">0</div>
+    </div>
+    <div class="score-box">
+      <div class="label">샷 수</div>
+      <div class="value" id="shotsVal">0</div>
+    </div>
+  </div>
+</header>
+
+<div class="game-area">
+  <div class="table-wrapper">
+    <canvas id="c"></canvas>
+    <div class="overlay-tl" id="physInfo">흰 공을 드래그해서 쳐보세요!</div>
+    <div class="overlay-tr">남은 공 <span id="remainVal">15</span>개</div>
+    <div class="sink-msg" id="sinkMsg">🎉 들어갔다!</div>
+    <div class="all-clear" id="allClear">
+      <div class="ac-stars">⭐⭐⭐</div>
+      <div class="ac-title">🏆 ALL CLEAR!</div>
+      <div class="ac-shots">
+        <div class="ac-shots-label">총 샷 수</div>
+        <div class="ac-shots-num" id="acShotsNum">0</div>
+        <div class="ac-shots-unit">번 만에 성공!</div>
+      </div>
+      <div class="ac-msg" id="acMsg">대단해요! 물리 천재! 🎉</div>
+      <button class="ac-retry" id="acRetryBtn">🔄 다시 도전!</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="control-row">
+      <div class="control-icon">⚖️</div>
+      <div class="control-info">
+        <div class="ctrl-label">공의 무게 — 무거울수록 같은 힘에도 덜 움직여요</div>
+        <input type="range" id="weightSlider" min="1" max="5" step="1" value="3">
+      </div>
+      <div class="ctrl-value" id="weightVal">보통</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-reset" id="resetBtn">🔄 공 다시 배치</button>
+      <button class="btn btn-hint"  id="hintBtn" >💡 물리 원리 보기</button>
+    </div>
+  </div>
+
+  <div class="hint-box" id="hintBox">
+    <strong>🔬 오늘의 물리 원리</strong><br>
+    • <strong>힘의 방향</strong>: 드래그한 방향의 반대로 공이 날아가요 (작용·반작용!)<br>
+    • <strong>힘의 세기</strong>: 멀리 당길수록 더 세게 날아가요<br>
+    • <strong>무게(질량)</strong>: 무거울수록 같은 힘에도 덜 움직여요 (관성의 법칙)<br>
+    • <strong>충돌</strong>: 공끼리 부딪히면 힘이 전달돼요!
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════
+//  상수
+// ═══════════════════════════════
+const BALL_R      = 12;
+const POCKET_R    = 20;    // 포켓 시각 반지름 (이 안에 들어오면 즉시 흡수)
+const PULL_R      = 34;    // 중력 당김 시작 거리 (포켓 가장자리 스치면 느껴짐)
+const PULL_FORCE  = 1.8;   // 당기는 힘 세기
+const RESTITUTION = 0.82;
+const FRICTION    = 0.988;
+const MIN_SPEED   = 0.08;
+
+const BALL_COLORS = [
+  '#e63946','#f4a261','#e9c46a','#2a9d8f','#457b9d',
+  '#6d6875','#e07a5f','#3d405b','#81b29a','#f2cc8f',
+  '#e76f51','#264653','#2d6a4f','#8338ec','#fb5607'
+];
+
+// ═══════════════════════════════
+//  상태
+// ═══════════════════════════════
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+let balls       = [];
+let pockets     = [];
+let score       = 0;
+let shots       = 0;
+let weightLevel = 3;
+
+let dragging   = false;
+let dragOrigin = {x:0,y:0};
+let dragCur    = {x:0,y:0};
+
+let sinkTimer = null;
+let hintOpen  = false;
+
+// ═══════════════════════════════
+//  헬퍼
+// ═══════════════════════════════
+function weightToMass(lv) {
+  return [0.4, 0.65, 1.0, 1.45, 2.0][lv - 1];
+}
+
+function lighten(hex, a) {
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.min(r+a,255)},${Math.min(g+a,255)},${Math.min(b+a,255)})`;
+}
+function darken(hex, a) {
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.max(r-a,0)},${Math.max(g-a,0)},${Math.max(b-a,0)})`;
+}
+
+function getCueBall() { return balls.find(b => b.isCue); }
+
+function isAnyMoving() {
+  return balls.some(b =>
+    !b.pocketed && (b.sinking || Math.abs(b.vx) > MIN_SPEED || Math.abs(b.vy) > MIN_SPEED)
+  );
+}
+
+// ═══════════════════════════════
+//  초기화
+// ═══════════════════════════════
+function initTable() {
+  const W = canvas.width, H = canvas.height;
+  const px = POCKET_R + 2, py = POCKET_R + 2;
+
+  pockets = [
+    {x: px,   y: py},
+    {x: W/2,  y: py - 2},
+    {x: W-px, y: py},
+    {x: px,   y: H-py},
+    {x: W/2,  y: H-py+2},
+    {x: W-px, y: H-py},
+  ];
+
+  balls = [];
+  const mass = weightToMass(weightLevel);
+  const startX = W * 0.64;
+  const startY = H / 2;
+  const gap    = BALL_R * 2.15;
+  let idx = 0;
+
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col <= row; col++) {
+      balls.push({
+        x: startX + row * gap * Math.sqrt(3)/2,
+        y: startY + (col - row/2) * gap,
+        vx: 0, vy: 0,
+        r: BALL_R,
+        color: BALL_COLORS[idx % BALL_COLORS.length],
+        num: idx + 1,
+        mass,
+        isCue: false,
+        pocketed:     false,
+        sinking:      false,
+        sinkProgress: 0,
+        sinkTarget:   null,
+      });
+      idx++;
+    }
+  }
+
+  // 큐볼
+  balls.push({
+    x: W * 0.26, y: H / 2,
+    vx: 0, vy: 0,
+    r: BALL_R,
+    color: '#f8f9fa',
+    num: 0,
+    mass,
+    isCue: true,
+    pocketed:     false,
+    sinking:      false,
+    sinkProgress: 0,
+    sinkTarget:   null,
+  });
+
+  updateUI();
+}
+
+// ═══════════════════════════════
+//  물리 업데이트
+// ═══════════════════════════════
+function update() {
+  const W = canvas.width, H = canvas.height;
+  const padX = POCKET_R + 2, padY = POCKET_R + 2;
+
+  for (const b of balls) {
+    if (b.pocketed) continue;
+
+    // ── 포켓 흡수 애니메이션 ──
+    if (b.sinking) {
+      b.sinkProgress += 0.07;
+      b.x += (b.sinkTarget.x - b.x) * 0.2;
+      b.y += (b.sinkTarget.y - b.y) * 0.2;
+      if (b.sinkProgress >= 1) {
+        b.pocketed = true;
+        b.sinking  = false;
+        if (!b.isCue) {
+          score++;
+          document.getElementById('scoreVal').textContent = score;
+          showSinkMsg();
+          updateUI();
+          checkAllClear();
+        } else {
+          // 큐볼 복귀
+          setTimeout(() => {
+            b.pocketed = false;
+            b.x = canvas.width * 0.26;
+            b.y = canvas.height / 2;
+            b.vx = 0; b.vy = 0;
+          }, 700);
+        }
+      }
+      continue;
+    }
+
+    // ── 이동 & 마찰 ──
+    b.vx *= FRICTION;
+    b.vy *= FRICTION;
+    if (Math.abs(b.vx) < MIN_SPEED) b.vx = 0;
+    if (Math.abs(b.vy) < MIN_SPEED) b.vy = 0;
+
+    b.x += b.vx;
+    b.y += b.vy;
+
+    // ── 벽 반사 ──
+    if (b.x - b.r < padX)     { b.x = padX + b.r;     b.vx =  Math.abs(b.vx) * RESTITUTION; }
+    if (b.x + b.r > W - padX) { b.x = W - padX - b.r; b.vx = -Math.abs(b.vx) * RESTITUTION; }
+    if (b.y - b.r < padY)     { b.y = padY + b.r;      b.vy =  Math.abs(b.vy) * RESTITUTION; }
+    if (b.y + b.r > H - padY) { b.y = H - padY - b.r;  b.vy = -Math.abs(b.vy) * RESTITUTION; }
+
+    // ── 포켓 중력 & 흡수 ──
+    for (const p of pockets) {
+      const pdx  = p.x - b.x, pdy = p.y - b.y;
+      const pdist = Math.hypot(pdx, pdy);
+
+      // 시각적 원 안에 스치면 → 즉시 흡수 시작
+      if (pdist < POCKET_R) {
+        b.sinking      = true;
+        b.sinkProgress = 0;
+        b.sinkTarget   = p;
+        b.vx = 0; b.vy = 0;
+        break;
+      }
+
+      // 포켓 주변 중력 영역 (POCKET_R ~ PULL_R) → 빨아당김
+      if (pdist < PULL_R) {
+        const strength = PULL_FORCE * (1 - pdist / PULL_R); // 가까울수록 강하게
+        b.vx += (pdx / pdist) * strength;
+        b.vy += (pdy / pdist) * strength;
+      }
+    }
+  }
+
+  // ── 공끼리 충돌 ──
+  const active = balls.filter(b => !b.pocketed && !b.sinking);
+  for (let i = 0; i < active.length; i++) {
+    for (let j = i + 1; j < active.length; j++) {
+      const a = active[i], b = active[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy);
+      const minD = a.r + b.r;
+      if (dist < minD && dist > 0.001) {
+        const nx = dx/dist, ny = dy/dist;
+        const overlap = (minD - dist) / 2;
+        a.x -= nx*overlap; a.y -= ny*overlap;
+        b.x += nx*overlap; b.y += ny*overlap;
+
+        const ma = a.mass, mb = b.mass;
+        const dvx = a.vx - b.vx, dvy = a.vy - b.vy;
+        const dot = dvx*nx + dvy*ny;
+        if (dot > 0) {
+          const imp = (2*dot / (ma+mb)) * RESTITUTION;
+          a.vx -= imp*mb*nx; a.vy -= imp*mb*ny;
+          b.vx += imp*ma*nx; b.vy += imp*ma*ny;
+        }
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════
+//  렌더링
+// ═══════════════════════════════
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // 펠트
+  const felt = ctx.createRadialGradient(W/2,H/2,0, W/2,H/2,W*0.7);
+  felt.addColorStop(0, '#3a7a5c');
+  felt.addColorStop(1, '#1b4332');
+  ctx.fillStyle = felt;
+  ctx.fillRect(0, 0, W, H);
+
+  // 그리드
+  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  for (let x=0; x<W; x+=24){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for (let y=0; y<H; y+=24){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // 중앙선
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6,6]);
+  ctx.beginPath(); ctx.moveTo(W/2, POCKET_R+6); ctx.lineTo(W/2, H-POCKET_R-6); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(W/2, H/2, 38, 0, Math.PI*2); ctx.stroke();
+
+  // 포켓
+  for (const p of pockets) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, POCKET_R, 0, Math.PI*2);
+    ctx.fillStyle = '#080808';
+    ctx.fill();
+    ctx.strokeStyle = '#3e2723';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(p.x - POCKET_R*0.28, p.y - POCKET_R*0.28, POCKET_R*0.28, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.fill();
+  }
+
+  // 드래그 UI
+  const cue = getCueBall();
+  if (dragging && cue && !cue.pocketed && !cue.sinking) {
+    const dx = dragCur.x - dragOrigin.x;
+    const dy = dragCur.y - dragOrigin.y;
+    const dist = Math.hypot(dx, dy);
+    const maxDrag = Math.min(W, H) * 0.38;
+    const pct = Math.min(dist / maxDrag, 1);
+
+    // 힘 색상: 파랑(약) → 노랑 → 빨강(강)
+    const r2 = Math.round(pct < 0.5 ? pct*2*220 : 220);
+    const g2 = Math.round(pct < 0.5 ? 160 + pct*2*40 : 200 - (pct-0.5)*2*180);
+    const b2 = Math.round(pct < 0.5 ? 255 - pct*2*255 : 0);
+    const lc  = `rgba(${r2},${g2},${b2},0.92)`;
+    const lcS = `rgba(${r2},${g2},${b2},0.35)`;
+
+    if (dist > 5) {
+      const nx = -dx/dist, ny = -dy/dist;   // 공이 날아갈 방향
+      const arrowLen = 30 + pct * 90;        // 힘 세기에 비례한 화살표 길이
+
+      // ── 1. 당기는 선 (큐볼 → 손가락): 흰 점선 ──
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5,5]);
+      ctx.beginPath();
+      ctx.moveTo(cue.x, cue.y);
+      ctx.lineTo(dragCur.x, dragCur.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // ── 2. 발사 방향 화살표 (굵은 색깔 선 + 화살촉) ──
+      const arrowEndX = cue.x + nx * arrowLen;
+      const arrowEndY = cue.y + ny * arrowLen;
+
+      // 발광 효과 (glow)
+      ctx.save();
+      ctx.shadowColor = lc;
+      ctx.shadowBlur  = 12;
+
+      // 화살 몸통
+      ctx.strokeStyle = lc;
+      ctx.lineWidth   = 4;
+      ctx.lineCap     = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cue.x + nx*cue.r, cue.y + ny*cue.r);
+      ctx.lineTo(arrowEndX, arrowEndY);
+      ctx.stroke();
+
+      // 화살촉
+      const headLen   = 14 + pct * 8;
+      const headAngle = Math.PI / 6;
+      const angle     = Math.atan2(ny, nx);
+      ctx.fillStyle = lc;
+      ctx.beginPath();
+      ctx.moveTo(arrowEndX, arrowEndY);
+      ctx.lineTo(
+        arrowEndX - headLen * Math.cos(angle - headAngle),
+        arrowEndY - headLen * Math.sin(angle - headAngle)
+      );
+      ctx.lineTo(
+        arrowEndX - headLen * Math.cos(angle + headAngle),
+        arrowEndY - headLen * Math.sin(angle + headAngle)
+      );
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // ── 3. 파워 원형 링 (큐볼 주위) ──
+      ctx.save();
+      ctx.strokeStyle = lcS;
+      ctx.lineWidth   = 3;
+      ctx.beginPath();
+      ctx.arc(cue.x, cue.y, cue.r + 4 + pct * 8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ── 4. 파워 바 ──
+    const bw=80, bh=10, bx=cue.x-bw/2, by=cue.y-cue.r-26;
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,5); ctx.fill();
+    // 배경 트랙
+    ctx.fillStyle='rgba(255,255,255,0.1)';
+    ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,5); ctx.fill();
+    // 채운 부분
+    if (pct > 0) {
+      ctx.fillStyle = lc;
+      ctx.beginPath(); ctx.roundRect(bx,by,bw*pct,bh,5); ctx.fill();
+    }
+    // 파워 텍스트
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${Math.round(pct*100)}%`, cue.x, by + bh/2);
+
+    const deg = dist>2 ? Math.round(Math.atan2(-dy,-dx)*180/Math.PI) : '—';
+    document.getElementById('physInfo').innerHTML =
+      `💪 힘: ${Math.round(pct*100)}% &nbsp;|&nbsp; 📐 방향: ${deg}°`;
+  } else if (!dragging) {
+    document.getElementById('physInfo').textContent = '흰 공을 드래그해서 쳐보세요!';
+  }
+
+  // 공
+  for (const b of balls) {
+    if (b.pocketed) continue;
+    const scale = b.sinking ? Math.max(1 - b.sinkProgress * 0.9, 0.05) : 1;
+    const r = b.r * scale;
+
+    ctx.save();
+    ctx.translate(b.x, b.y);
+
+    // 그림자
+    ctx.beginPath();
+    ctx.arc(3*scale, 4*scale, r, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fill();
+
+    // 본체
+    const g = ctx.createRadialGradient(-r*0.3,-r*0.3,0, 0,0,r);
+    g.addColorStop(0, lighten(b.color, 55));
+    g.addColorStop(0.5, b.color);
+    g.addColorStop(1, darken(b.color, 45));
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI*2);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // 줄무늬 (9~15번)
+    if (b.num >= 9 && !b.isCue) {
+      ctx.beginPath();
+      ctx.arc(0, 0, r*0.62, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.82)';
+      ctx.fill();
+    }
+
+    // 번호
+    if (!b.isCue) {
+      ctx.fillStyle = b.num >= 9 ? b.color : 'white';
+      ctx.font = `bold ${Math.round(r*0.88)}px 'Nanum Round Square'`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(b.num, 0, 1);
+    }
+
+    // 큐볼 하이라이트
+    if (b.isCue) {
+      ctx.beginPath();
+      ctx.arc(-r*0.28,-r*0.28, r*0.22, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════
+//  게임 루프
+// ═══════════════════════════════
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ═══════════════════════════════
+//  입력
+// ═══════════════════════════════
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+  const src = e.touches ? e.touches[0] : e;
+  return { x:(src.clientX-rect.left)*sx, y:(src.clientY-rect.top)*sy };
+}
+
+function onStart(e) {
+  e.preventDefault();
+  if (isAnyMoving()) return;
+  const cue = getCueBall();
+  if (!cue || cue.pocketed || cue.sinking) return;
+  const pos = getPos(e);
+  if (Math.hypot(pos.x-cue.x, pos.y-cue.y) < cue.r * 3.8) {
+    dragging   = true;
+    dragOrigin = { x:cue.x, y:cue.y };
+    dragCur    = { ...pos };
+  }
+}
+
+function onMove(e) {
+  e.preventDefault();
+  if (!dragging) return;
+  dragCur = getPos(e);
+}
+
+function onEnd(e) {
+  e.preventDefault();
+  if (!dragging) return;
+  dragging = false;
+
+  const cue = getCueBall();
+  if (!cue) return;
+
+  const dx   = dragCur.x - dragOrigin.x;
+  const dy   = dragCur.y - dragOrigin.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 6) return;
+
+  const maxDrag = Math.min(canvas.width, canvas.height) * 0.38;
+  const power   = Math.min(dist / maxDrag, 1);
+  const speed   = (power * 20) / weightToMass(weightLevel);
+
+  cue.vx = (-dx/dist) * speed;
+  cue.vy = (-dy/dist) * speed;
+
+  shots++;
+  document.getElementById('shotsVal').textContent = shots;
+}
+
+canvas.addEventListener('mousedown',  onStart);
+canvas.addEventListener('mousemove',  onMove);
+canvas.addEventListener('mouseup',    onEnd);
+canvas.addEventListener('touchstart', onStart, {passive:false});
+canvas.addEventListener('touchmove',  onMove,  {passive:false});
+canvas.addEventListener('touchend',   onEnd,   {passive:false});
+
+// ═══════════════════════════════
+//  UI 이벤트
+// ═══════════════════════════════
+const WEIGHT_LABELS = ['매우 가벼움','가벼움','보통','무거움','매우 무거움'];
+
+document.getElementById('weightSlider').addEventListener('input', function() {
+  weightLevel = parseInt(this.value);
+  document.getElementById('weightVal').textContent = WEIGHT_LABELS[weightLevel-1];
+  const m = weightToMass(weightLevel);
+  for (const b of balls) b.mass = m;
+});
+
+document.getElementById('acRetryBtn').addEventListener('click', () => {
+  score = 0; shots = 0;
+  document.getElementById('scoreVal').textContent = '0';
+  document.getElementById('shotsVal').textContent = '0';
+  document.getElementById('allClear').classList.remove('show');
+  initTable();
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  score = 0; shots = 0;
+  document.getElementById('scoreVal').textContent = '0';
+  document.getElementById('shotsVal').textContent = '0';
+  document.getElementById('allClear').classList.remove('show');
+  initTable();
+});
+
+document.getElementById('hintBtn').addEventListener('click', () => {
+  hintOpen = !hintOpen;
+  document.getElementById('hintBox').classList.toggle('visible', hintOpen);
+});
+
+function updateUI() {
+  const rem = balls.filter(b => !b.isCue && !b.pocketed).length;
+  document.getElementById('remainVal').textContent = rem;
+}
+
+function showSinkMsg() {
+  const el = document.getElementById('sinkMsg');
+  el.classList.add('show');
+  if (sinkTimer) clearTimeout(sinkTimer);
+  sinkTimer = setTimeout(() => el.classList.remove('show'), 1100);
+}
+
+function checkAllClear() {
+  const left = balls.filter(b => !b.isCue && !b.pocketed).length;
+  if (left === 0) {
+    setTimeout(() => {
+      document.getElementById('acShotsNum').textContent = shots;
+      // 샷 수에 따른 평가 메시지
+      let msg = '대단해요! 물리 천재! 🎉';
+      if (shots <= 10)      msg = '🌟 완벽해요! 천재 물리학자!';
+      else if (shots <= 20) msg = '👏 훌륭해요! 멋진 솜씨!';
+      else if (shots <= 30) msg = '😊 잘했어요! 연습하면 더 잘할 수 있어요!';
+      else                  msg = '💪 끝까지 포기하지 않았어요!';
+      document.getElementById('acMsg').textContent = msg;
+      document.getElementById('allClear').classList.add('show');
+    }, 600);
+  }
+}
+
+// ═══════════════════════════════
+//  사이즈 & 시작
+// ═══════════════════════════════
+function resize() {
+  const maxW = Math.min(window.innerWidth - 32, 660);
+  canvas.width  = maxW;
+  canvas.height = Math.round(maxW * 0.48);
+  initTable();
+}
+
+window.addEventListener('resize', resize);
+resize();
+loop();
+</script>
+</body>
+</html>
