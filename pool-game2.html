@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🎱 포켓볼 물리 실험</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nanum+Round+Square:wght@400;700;800&family=Black+Han+Sans&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; touch-action:none; }
+
+:root {
+  --rail:     #5c3d2e;
+  --rail-dk:  #3e2723;
+  --gold:     #f4a261;
+  --ui-bg:    #1a1a2e;
+  --ui-card:  #16213e;
+  --accent:   #e94560;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--ui-bg);
+  font-family: 'Nanum Round Square', sans-serif;
+}
+
+/* ════════════════════════════
+   전체 레이아웃: 가로 분할
+   왼쪽 = 당구대  /  오른쪽 = 패널
+════════════════════════════ */
+#layout {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+}
+
+#table-col {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 12px 20px 20px;
+  min-width: 0;
+}
+
+#side-panel {
+  flex: 0 0 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 18px 20px 6px;
+  overflow-y: auto;
+}
+
+/* ── 당구대 래퍼 ── */
+#table-wrap {
+  position: relative;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 10px var(--rail),
+    0 0 0 20px var(--rail-dk),
+    0 16px 48px rgba(0,0,0,0.8);
+  /* 크기는 JS가 결정 */
+}
+
+canvas { display:block; border-radius:8px; }
+
+/* ── 캔버스 위 오버레이 ── */
+.ov {
+  position: absolute;
+  background: rgba(0,0,0,0.62);
+  backdrop-filter: blur(4px);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.65rem;
+  color: #ccd6f6;
+  pointer-events: none;
+  line-height: 1.8;
+}
+#ov-tl { top:8px; left:8px; }
+#ov-tr { top:8px; right:8px; text-align:right; }
+#ov-tr span { color:var(--gold); font-weight:800; font-size:1rem; }
+
+/* 파울 하트 */
+#ov-bl {
+  bottom:8px; left:8px;
+  display:flex; align-items:center; gap:6px;
+  font-size:0.68rem;
+}
+#hearts { font-size:1.1rem; letter-spacing:2px; }
+
+/* ── 공 들어갔다 메시지 ── */
+#sink-msg {
+  position: absolute;
+  top:50%; left:50%;
+  transform: translate(-50%,-50%);
+  background: rgba(244,162,97,0.97);
+  color: #1a1a2e;
+  font-family: 'Black Han Sans', sans-serif;
+  font-size: 1.6rem;
+  padding: 8px 24px;
+  border-radius: 14px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s;
+  z-index: 10;
+  white-space: nowrap;
+}
+#sink-msg.show { opacity:1; }
+
+/* ── 파울 메시지 ── */
+#foul-msg {
+  position: absolute;
+  top:50%; left:50%;
+  transform: translate(-50%,-50%);
+  background: rgba(233,69,96,0.95);
+  color: white;
+  font-family: 'Black Han Sans', sans-serif;
+  font-size: 1.4rem;
+  padding: 8px 22px;
+  border-radius: 14px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s;
+  z-index: 11;
+  white-space: nowrap;
+  text-align: center;
+}
+#foul-msg.show { opacity:1; }
+
+/* ── ALL CLEAR 오버레이 ── */
+#all-clear {
+  position: absolute; inset:0;
+  background: rgba(0,0,0,0.82);
+  display: flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  border-radius: 8px;
+  opacity:0; pointer-events:none;
+  transition: opacity 0.4s;
+  z-index:20; gap:10px;
+}
+#all-clear.show { opacity:1; pointer-events:all; }
+.ac-title {
+  font-family:'Black Han Sans',sans-serif;
+  font-size:2.2rem; color:var(--gold);
+  text-shadow:0 0 30px rgba(244,162,97,0.9);
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+@keyframes pulse { from{transform:scale(1)} to{transform:scale(1.06)} }
+.ac-stars { font-size:1.8rem; letter-spacing:6px; }
+.ac-shots-box {
+  background:rgba(244,162,97,0.15);
+  border:2px solid var(--gold);
+  border-radius:12px;
+  padding:8px 26px; text-align:center;
+}
+.ac-shots-label { font-size:0.7rem; color:#8892b0; }
+.ac-shots-num { font-family:'Black Han Sans',sans-serif; font-size:2.2rem; color:white; }
+.ac-shots-unit { font-size:0.75rem; color:#ccd6f6; }
+.ac-eval { font-size:0.85rem; color:#ccd6f6; }
+.ac-btn {
+  margin-top:6px;
+  background:linear-gradient(135deg,#e94560,#c62a47);
+  color:white; border:none; border-radius:10px;
+  padding:9px 28px;
+  font-family:'Nanum Round Square',sans-serif;
+  font-size:0.9rem; font-weight:800; cursor:pointer;
+}
+
+/* ════════════════════
+   사이드 패널
+════════════════════ */
+.panel-title {
+  font-family:'Black Han Sans',sans-serif;
+  font-size:1rem; color:var(--gold);
+  letter-spacing:1px;
+  padding-bottom:6px;
+  border-bottom:2px solid rgba(244,162,97,0.3);
+}
+
+.score-row {
+  display:flex; gap:8px;
+}
+.score-box {
+  flex:1;
+  background:var(--ui-card);
+  border:2px solid var(--accent);
+  border-radius:10px;
+  padding:6px 4px; text-align:center;
+}
+.score-box .lbl { font-size:0.58rem; color:#8892b0; }
+.score-box .val { font-size:1.05rem; font-weight:800; color:var(--gold); }
+
+.ctrl-card {
+  background:var(--ui-card);
+  border-radius:12px;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,0.05);
+}
+.ctrl-lbl { font-size:0.72rem; color:#8892b0; margin-bottom:5px; }
+
+input[type=range] {
+  -webkit-appearance:none;
+  width:100%; height:8px;
+  border-radius:4px;
+  background:rgba(255,255,255,0.1);
+  outline:none; cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height:8px; border-radius:4px;
+  background:linear-gradient(90deg,var(--accent),var(--gold));
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none;
+  width:20px; height:20px; border-radius:50%;
+  background:white; margin-top:-6px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.5);
+  border:3px solid var(--gold);
+}
+.ctrl-val {
+  font-size:0.78rem; font-weight:800;
+  color:var(--gold); text-align:right;
+  margin-top:4px;
+}
+
+.btn-col { display:flex; flex-direction:column; gap:8px; }
+.btn {
+  width:100%; padding:10px;
+  border:none; border-radius:10px;
+  font-family:'Nanum Round Square',sans-serif;
+  font-size:0.82rem; font-weight:800;
+  cursor:pointer;
+  transition:transform 0.1s, opacity 0.1s;
+}
+.btn:active { transform:scale(0.96); opacity:0.85; }
+.btn-reset { background:linear-gradient(135deg,#e94560,#c62a47); color:white; }
+.btn-hint  { background:linear-gradient(135deg,#f4a261,#e76f51); color:white; }
+
+.hint-box {
+  background:linear-gradient(135deg,#0f3460,#16213e);
+  border:2px solid var(--accent);
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:0.72rem; color:#ccd6f6;
+  line-height:1.7; display:none;
+}
+.hint-box.open { display:block; }
+.hint-box strong { color:var(--gold); }
+
+/* ── 파울 라이프 (사이드패널용) ── */
+.foul-card {
+  background:var(--ui-card);
+  border-radius:12px;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,0.05);
+  text-align:center;
+}
+.foul-card .foul-lbl { font-size:0.65rem; color:#8892b0; margin-bottom:4px; }
+#panel-hearts { font-size:1.5rem; letter-spacing:4px; }
+</style>
+</head>
+<body>
+
+<div id="layout">
+
+  <!-- 왼쪽: 당구대 -->
+  <div id="table-col">
+    <div id="table-wrap">
+      <canvas id="c"></canvas>
+      <div class="ov" id="ov-tl">흰 공을 드래그해서 쳐보세요!</div>
+      <div class="ov" id="ov-tr">남은 공 <span id="remain-val">15</span>개</div>
+      <div class="ov" id="ov-bl">
+        <span>파울</span>
+        <span id="hearts">❤️❤️❤️</span>
+      </div>
+      <div id="sink-msg">🎉 들어갔다!</div>
+      <div id="foul-msg">😱 흰 공 빠짐!</div>
+      <div id="all-clear">
+        <div class="ac-stars">⭐⭐⭐</div>
+        <div class="ac-title">🏆 ALL CLEAR!</div>
+        <div class="ac-shots-box">
+          <div class="ac-shots-label">총 샷 수</div>
+          <div class="ac-shots-num" id="ac-shots">0</div>
+          <div class="ac-shots-unit">번 만에 성공!</div>
+        </div>
+        <div class="ac-eval" id="ac-eval">대단해요!</div>
+        <button class="ac-btn" id="ac-retry">🔄 다시 도전!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 오른쪽: 컨트롤 패널 -->
+  <div id="side-panel">
+    <div class="panel-title">🎱 포켓볼 실험실</div>
+
+    <div class="score-row">
+      <div class="score-box">
+        <div class="lbl">넣은 공</div>
+        <div class="val" id="score-val">0</div>
+      </div>
+      <div class="score-box">
+        <div class="lbl">샷 수</div>
+        <div class="val" id="shots-val">0</div>
+      </div>
+    </div>
+
+    <div class="foul-card">
+      <div class="foul-lbl">흰 공 파울 (3번이면 리셋!)</div>
+      <div id="panel-hearts">❤️❤️❤️</div>
+    </div>
+
+    <div class="ctrl-card">
+      <div class="ctrl-lbl">⚖️ 공의 무게</div>
+      <input type="range" id="weight-slider" min="1" max="5" step="1" value="3">
+      <div class="ctrl-val" id="weight-val">보통</div>
+    </div>
+
+    <div class="btn-col">
+      <button class="btn btn-reset" id="reset-btn">🔄 공 다시 배치</button>
+      <button class="btn btn-hint"  id="hint-btn" >💡 물리 원리</button>
+    </div>
+
+    <div class="hint-box" id="hint-box">
+      <strong>🔬 물리 원리</strong><br>
+      • <strong>힘의 방향</strong>: 드래그 반대 방향으로 공이 날아가요<br>
+      • <strong>힘의 세기</strong>: 멀리 당길수록 더 세게!<br>
+      • <strong>무게</strong>: 무거울수록 덜 움직여요 (관성)<br>
+      • <strong>충돌</strong>: 공끼리 부딪히면 힘이 전달돼요!
+    </div>
+  </div>
+
+</div><!-- #layout -->
+
+<script>
+// ═══════════════════════
+//  상수
+// ═══════════════════════
+const BALL_R     = 12;
+const POCKET_R   = 20;   // 시각적 포켓 반지름
+const PULL_R     = 36;   // 중력 당김 시작 거리
+const PULL_FORCE = 1.8;  // 당기는 힘
+const RESTITUTION = 0.82;
+const FRICTION    = 0.988;
+const MIN_SPEED   = 0.08;
+const MAX_FOULS   = 3;
+
+const BALL_COLORS = [
+  '#e63946','#f4a261','#e9c46a','#2a9d8f','#457b9d',
+  '#6d6875','#e07a5f','#3d405b','#81b29a','#f2cc8f',
+  '#e76f51','#264653','#2d6a4f','#8338ec','#fb5607'
+];
+const WEIGHT_LABELS = ['매우 가벼움','가벼움','보통','무거움','매우 무거움'];
+
+// ═══════════════════════
+//  상태
+// ═══════════════════════
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+let balls       = [];
+let pockets     = [];
+let score       = 0;
+let shots       = 0;
+let fouls       = 0;      // 큐볼 파울 횟수
+let weightLevel = 3;
+let dragging    = false;
+let dragOrigin  = {x:0,y:0};
+let dragCur     = {x:0,y:0};
+let sinkTimer   = null;
+let foulTimer   = null;
+let hintOpen    = false;
+
+// ═══════════════════════
+//  헬퍼
+// ═══════════════════════
+function weightToMass(lv){ return [0.4,0.65,1.0,1.45,2.0][lv-1]; }
+function getCue(){ return balls.find(b=>b.isCue); }
+function isMoving(){
+  return balls.some(b=>!b.pocketed&&(b.sinking||Math.abs(b.vx)>MIN_SPEED||Math.abs(b.vy)>MIN_SPEED));
+}
+function lighten(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.min(r+a,255)},${Math.min(g+a,255)},${Math.min(b+a,255)})`;
+}
+function darken(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.max(r-a,0)},${Math.max(g-a,0)},${Math.max(b-a,0)})`;
+}
+
+// ═══════════════════════
+//  초기화
+// ═══════════════════════
+function initTable(){
+  const W=canvas.width, H=canvas.height;
+  const px=POCKET_R+2, py=POCKET_R+2;
+
+  pockets=[
+    {x:px,   y:py},   {x:W/2, y:py-2},   {x:W-px, y:py},
+    {x:px,   y:H-py}, {x:W/2, y:H-py+2}, {x:W-px, y:H-py},
+  ];
+
+  balls=[];
+  const mass=weightToMass(weightLevel);
+  const startX=W*0.64, startY=H/2, gap=BALL_R*2.15;
+  let idx=0;
+  for(let row=0;row<5;row++){
+    for(let col=0;col<=row;col++){
+      balls.push({
+        x:startX+row*gap*Math.sqrt(3)/2,
+        y:startY+(col-row/2)*gap,
+        vx:0,vy:0, r:BALL_R,
+        color:BALL_COLORS[idx%BALL_COLORS.length],
+        num:idx+1, mass,
+        isCue:false, pocketed:false,
+        sinking:false, sinkProgress:0, sinkTarget:null,
+      });
+      idx++;
+    }
+  }
+  balls.push({
+    x:W*0.26, y:H/2, vx:0,vy:0, r:BALL_R,
+    color:'#f8f9fa', num:0, mass,
+    isCue:true, pocketed:false,
+    sinking:false, sinkProgress:0, sinkTarget:null,
+  });
+
+  updateUI();
+}
+
+function fullReset(){
+  score=0; shots=0; fouls=0;
+  document.getElementById('score-val').textContent='0';
+  document.getElementById('shots-val').textContent='0';
+  document.getElementById('all-clear').classList.remove('show');
+  updateHearts();
+  initTable();
+}
+
+// ═══════════════════════
+//  물리
+// ═══════════════════════
+function update(){
+  const W=canvas.width, H=canvas.height;
+  const padX=POCKET_R+2, padY=POCKET_R+2;
+
+  for(const b of balls){
+    if(b.pocketed) continue;
+
+    // 흡수 애니메이션
+    if(b.sinking){
+      b.sinkProgress+=0.07;
+      b.x+=(b.sinkTarget.x-b.x)*0.22;
+      b.y+=(b.sinkTarget.y-b.y)*0.22;
+      if(b.sinkProgress>=1){
+        b.pocketed=true; b.sinking=false;
+        if(!b.isCue){
+          score++;
+          document.getElementById('score-val').textContent=score;
+          showSinkMsg();
+          updateUI();
+          checkAllClear();
+        } else {
+          onCuePocketed(b);
+        }
+      }
+      continue;
+    }
+
+    // 마찰 & 이동
+    b.vx*=FRICTION; b.vy*=FRICTION;
+    if(Math.abs(b.vx)<MIN_SPEED) b.vx=0;
+    if(Math.abs(b.vy)<MIN_SPEED) b.vy=0;
+    b.x+=b.vx; b.y+=b.vy;
+
+    // 벽 반사
+    if(b.x-b.r<padX)     {b.x=padX+b.r;     b.vx= Math.abs(b.vx)*RESTITUTION;}
+    if(b.x+b.r>W-padX)   {b.x=W-padX-b.r;   b.vx=-Math.abs(b.vx)*RESTITUTION;}
+    if(b.y-b.r<padY)     {b.y=padY+b.r;      b.vy= Math.abs(b.vy)*RESTITUTION;}
+    if(b.y+b.r>H-padY)   {b.y=H-padY-b.r;   b.vy=-Math.abs(b.vy)*RESTITUTION;}
+
+    // 포켓 중력 & 흡수
+    for(const p of pockets){
+      const pdx=p.x-b.x, pdy=p.y-b.y;
+      const pd=Math.hypot(pdx,pdy);
+      if(pd<POCKET_R){
+        // 포켓 원 안 → 즉시 흡수
+        b.sinking=true; b.sinkProgress=0; b.sinkTarget=p;
+        b.vx=0; b.vy=0;
+        break;
+      } else if(pd<PULL_R){
+        // 중력 당김
+        const str=PULL_FORCE*(1-pd/PULL_R);
+        b.vx+=(pdx/pd)*str;
+        b.vy+=(pdy/pd)*str;
+      }
+    }
+  }
+
+  // 공끼리 충돌
+  const active=balls.filter(b=>!b.pocketed&&!b.sinking);
+  for(let i=0;i<active.length;i++){
+    for(let j=i+1;j<active.length;j++){
+      const a=active[i],b=active[j];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.hypot(dx,dy);
+      const minD=a.r+b.r;
+      if(dist<minD&&dist>0.001){
+        const nx=dx/dist, ny=dy/dist;
+        const ov=(minD-dist)/2;
+        a.x-=nx*ov; a.y-=ny*ov;
+        b.x+=nx*ov; b.y+=ny*ov;
+        const dvx=a.vx-b.vx, dvy=a.vy-b.vy;
+        const dot=dvx*nx+dvy*ny;
+        if(dot>0){
+          const imp=(2*dot/(a.mass+b.mass))*RESTITUTION;
+          a.vx-=imp*b.mass*nx; a.vy-=imp*b.mass*ny;
+          b.vx+=imp*a.mass*nx; b.vy+=imp*a.mass*ny;
+        }
+      }
+    }
+  }
+}
+
+// 큐볼 포켓 처리
+function onCuePocketed(b){
+  fouls++;
+  updateHearts();
+  if(fouls>=MAX_FOULS){
+    // 파울 3회 → 전체 리셋
+    showFoulMsg('😱 파울 3번! 처음부터!', ()=>{
+      fullReset();
+    });
+  } else {
+    // 큐볼 복귀
+    showFoulMsg(`😱 흰 공 빠짐! (${fouls}/${MAX_FOULS})`, ()=>{
+      b.pocketed=false;
+      b.x=canvas.width*0.26;
+      b.y=canvas.height/2;
+      b.vx=0; b.vy=0;
+    });
+  }
+}
+
+// ═══════════════════════
+//  렌더링
+// ═══════════════════════
+function draw(){
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // 펠트
+  const felt=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.7);
+  felt.addColorStop(0,'#3a7a5c');
+  felt.addColorStop(1,'#1b4332');
+  ctx.fillStyle=felt;
+  ctx.fillRect(0,0,W,H);
+
+  // 그리드
+  ctx.strokeStyle='rgba(255,255,255,0.025)';
+  ctx.lineWidth=1;
+  for(let x=0;x<W;x+=24){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=24){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // 중앙선
+  ctx.strokeStyle='rgba(255,255,255,0.1)';
+  ctx.lineWidth=1.5;
+  ctx.setLineDash([6,6]);
+  ctx.beginPath();ctx.moveTo(W/2,POCKET_R+6);ctx.lineTo(W/2,H-POCKET_R-6);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();ctx.arc(W/2,H/2,38,0,Math.PI*2);ctx.stroke();
+
+  // 포켓 중력 범위 (옅은 표시)
+  for(const p of pockets){
+    const g=ctx.createRadialGradient(p.x,p.y,POCKET_R,p.x,p.y,PULL_R);
+    g.addColorStop(0,'rgba(0,0,0,0.25)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.beginPath();ctx.arc(p.x,p.y,PULL_R,0,Math.PI*2);
+    ctx.fillStyle=g; ctx.fill();
+  }
+
+  // 포켓
+  for(const p of pockets){
+    ctx.beginPath();ctx.arc(p.x,p.y,POCKET_R,0,Math.PI*2);
+    ctx.fillStyle='#060606'; ctx.fill();
+    ctx.strokeStyle='#3e2723'; ctx.lineWidth=3; ctx.stroke();
+    // 반짝임
+    ctx.beginPath();ctx.arc(p.x-POCKET_R*0.28,p.y-POCKET_R*0.28,POCKET_R*0.28,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.fill();
+  }
+
+  // ── 드래그 UI ──
+  const cue=getCue();
+  if(dragging&&cue&&!cue.pocketed&&!cue.sinking){
+    const dx=dragCur.x-dragOrigin.x, dy=dragCur.y-dragOrigin.y;
+    const dist=Math.hypot(dx,dy);
+    const maxDrag=Math.min(W,H)*0.38;
+    const pct=Math.min(dist/maxDrag,1);
+
+    // 힘 색: 파랑→노랑→빨강
+    const r2=Math.round(pct<0.5?pct*2*220:220);
+    const g2=Math.round(pct<0.5?160+pct*2*40:200-(pct-0.5)*2*180);
+    const b2=Math.round(pct<0.5?255-pct*2*255:0);
+    const lc=`rgba(${r2},${g2},${b2},0.92)`;
+
+    if(dist>5){
+      const nx=-dx/dist, ny=-dy/dist;
+      const arrowLen=30+pct*90;
+
+      // 당기는 점선 (흰색)
+      ctx.save();
+      ctx.strokeStyle='rgba(255,255,255,0.38)';
+      ctx.lineWidth=2; ctx.setLineDash([5,5]);
+      ctx.beginPath();ctx.moveTo(cue.x,cue.y);ctx.lineTo(dragCur.x,dragCur.y);
+      ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+
+      // 발사 방향 화살표 (발광)
+      const ex=cue.x+nx*arrowLen, ey=cue.y+ny*arrowLen;
+      ctx.save();
+      ctx.shadowColor=lc; ctx.shadowBlur=14;
+      ctx.strokeStyle=lc; ctx.lineWidth=4.5; ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(cue.x+nx*cue.r,cue.y+ny*cue.r);ctx.lineTo(ex,ey);ctx.stroke();
+      // 화살촉
+      const hLen=13+pct*7, hAng=Math.PI/6;
+      const ang=Math.atan2(ny,nx);
+      ctx.fillStyle=lc;
+      ctx.beginPath();ctx.moveTo(ex,ey);
+      ctx.lineTo(ex-hLen*Math.cos(ang-hAng),ey-hLen*Math.sin(ang-hAng));
+      ctx.lineTo(ex-hLen*Math.cos(ang+hAng),ey-hLen*Math.sin(ang+hAng));
+      ctx.closePath();ctx.fill();
+      ctx.restore();
+
+      // 파워 링
+      ctx.save();
+      ctx.strokeStyle=`rgba(${r2},${g2},${b2},0.3)`;
+      ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(cue.x,cue.y,cue.r+4+pct*8,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    }
+
+    // 파워 바
+    const bw=80,bh=10,bx=cue.x-bw/2,by=cue.y-cue.r-26;
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.beginPath();ctx.roundRect(bx,by,bw,bh,5);ctx.fill();
+    if(pct>0){
+      ctx.fillStyle=lc;
+      ctx.beginPath();ctx.roundRect(bx,by,bw*pct,bh,5);ctx.fill();
+    }
+    ctx.fillStyle='white'; ctx.font='bold 8px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(`${Math.round(pct*100)}%`,cue.x,by+bh/2);
+
+    const deg=dist>2?Math.round(Math.atan2(-dy,-dx)*180/Math.PI):'—';
+    document.getElementById('ov-tl').innerHTML=`💪 힘: ${Math.round(pct*100)}% &nbsp;|&nbsp; 📐 방향: ${deg}°`;
+  } else if(!dragging){
+    document.getElementById('ov-tl').textContent='흰 공을 드래그해서 쳐보세요!';
+  }
+
+  // ── 공 ──
+  for(const b of balls){
+    if(b.pocketed) continue;
+    const scale=b.sinking?Math.max(1-b.sinkProgress*0.9,0.05):1;
+    const r=b.r*scale;
+    ctx.save(); ctx.translate(b.x,b.y);
+    // 그림자
+    ctx.beginPath();ctx.arc(3*scale,4*scale,r,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fill();
+    // 본체
+    const g=ctx.createRadialGradient(-r*0.3,-r*0.3,0,0,0,r);
+    g.addColorStop(0,lighten(b.color,55));
+    g.addColorStop(0.5,b.color);
+    g.addColorStop(1,darken(b.color,45));
+    ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);
+    ctx.fillStyle=g;ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=1;ctx.stroke();
+    // 줄무늬 9~15
+    if(b.num>=9&&!b.isCue){
+      ctx.beginPath();ctx.arc(0,0,r*0.62,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.82)';ctx.fill();
+    }
+    // 번호
+    if(!b.isCue){
+      ctx.fillStyle=b.num>=9?b.color:'white';
+      ctx.font=`bold ${Math.round(r*0.88)}px 'Nanum Round Square'`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(b.num,0,1);
+    }
+    // 큐볼 하이라이트
+    if(b.isCue){
+      ctx.beginPath();ctx.arc(-r*0.28,-r*0.28,r*0.22,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.65)';ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════
+//  게임 루프
+// ═══════════════════════
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+
+// ═══════════════════════
+//  입력
+// ═══════════════════════
+function getPos(e){
+  const rect=canvas.getBoundingClientRect();
+  const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+  const src=e.touches?e.touches[0]:e;
+  return{x:(src.clientX-rect.left)*sx, y:(src.clientY-rect.top)*sy};
+}
+function onStart(e){
+  e.preventDefault();
+  if(isMoving()) return;
+  const cue=getCue();
+  if(!cue||cue.pocketed||cue.sinking) return;
+  const pos=getPos(e);
+  if(Math.hypot(pos.x-cue.x,pos.y-cue.y)<cue.r*3.8){
+    dragging=true;
+    dragOrigin={x:cue.x,y:cue.y};
+    dragCur={...pos};
+  }
+}
+function onMove(e){ e.preventDefault(); if(!dragging) return; dragCur=getPos(e); }
+function onEnd(e){
+  e.preventDefault();
+  if(!dragging) return;
+  dragging=false;
+  const cue=getCue(); if(!cue) return;
+  const dx=dragCur.x-dragOrigin.x, dy=dragCur.y-dragOrigin.y;
+  const dist=Math.hypot(dx,dy);
+  if(dist<6) return;
+  const power=Math.min(dist/(Math.min(canvas.width,canvas.height)*0.38),1);
+  const speed=(power*20)/weightToMass(weightLevel);
+  cue.vx=(-dx/dist)*speed;
+  cue.vy=(-dy/dist)*speed;
+  shots++;
+  document.getElementById('shots-val').textContent=shots;
+}
+canvas.addEventListener('mousedown', onStart);
+canvas.addEventListener('mousemove', onMove);
+canvas.addEventListener('mouseup',   onEnd);
+canvas.addEventListener('touchstart',onStart,{passive:false});
+canvas.addEventListener('touchmove', onMove, {passive:false});
+canvas.addEventListener('touchend',  onEnd,  {passive:false});
+
+// ═══════════════════════
+//  UI 업데이트
+// ═══════════════════════
+function updateUI(){
+  const rem=balls.filter(b=>!b.isCue&&!b.pocketed).length;
+  document.getElementById('remain-val').textContent=rem;
+}
+
+function updateHearts(){
+  const left=MAX_FOULS-fouls;
+  const h='❤️'.repeat(Math.max(left,0))+'🖤'.repeat(Math.max(fouls,0));
+  document.getElementById('hearts').textContent=h;
+  document.getElementById('panel-hearts').textContent=h;
+}
+
+function showSinkMsg(){
+  const el=document.getElementById('sink-msg');
+  el.classList.add('show');
+  if(sinkTimer) clearTimeout(sinkTimer);
+  sinkTimer=setTimeout(()=>el.classList.remove('show'),1100);
+}
+
+function showFoulMsg(txt, cb){
+  const el=document.getElementById('foul-msg');
+  el.textContent=txt;
+  el.classList.add('show');
+  if(foulTimer) clearTimeout(foulTimer);
+  foulTimer=setTimeout(()=>{ el.classList.remove('show'); if(cb) cb(); },1400);
+}
+
+function checkAllClear(){
+  if(balls.filter(b=>!b.isCue&&!b.pocketed).length===0){
+    setTimeout(()=>{
+      document.getElementById('ac-shots').textContent=shots;
+      const msgs=['🌟 완벽! 천재 물리학자!','👏 훌륭해요! 멋진 솜씨!','😊 잘했어요! 연습하면 더!','💪 끝까지 포기 안 했어요!'];
+      document.getElementById('ac-eval').textContent=
+        shots<=10?msgs[0]:shots<=20?msgs[1]:shots<=30?msgs[2]:msgs[3];
+      document.getElementById('all-clear').classList.add('show');
+    },600);
+  }
+}
+
+// ═══════════════════════
+//  버튼
+// ═══════════════════════
+document.getElementById('weight-slider').addEventListener('input',function(){
+  weightLevel=parseInt(this.value);
+  document.getElementById('weight-val').textContent=WEIGHT_LABELS[weightLevel-1];
+  const m=weightToMass(weightLevel);
+  for(const b of balls) b.mass=m;
+});
+document.getElementById('reset-btn').addEventListener('click',()=>fullReset());
+document.getElementById('ac-retry')  .addEventListener('click',()=>fullReset());
+document.getElementById('hint-btn').addEventListener('click',()=>{
+  hintOpen=!hintOpen;
+  document.getElementById('hint-box').classList.toggle('open',hintOpen);
+});
+
+// ═══════════════════════
+//  사이즈: 항상 화면 꽉 채우기
+// ═══════════════════════
+function resize(){
+  const SIDE_W   = 210;  // 사이드패널 고정 너비
+  const SIDE_PAD = 44;   // side-panel 좌우 padding 합산
+  const TABLE_PAD= 52;   // table-col padding + rail 여백
+  const RAIL     = 44;   // 레일 두께 (box-shadow 양쪽)
+
+  const availW = window.innerWidth  - SIDE_W - SIDE_PAD - TABLE_PAD - RAIL;
+  const availH = window.innerHeight - TABLE_PAD - RAIL;
+
+  // 2.1 : 1 비율
+  const RATIO=2.1;
+  let tW=availW, tH=Math.round(availW/RATIO);
+  if(tH>availH){ tH=availH; tW=Math.round(availH*RATIO); }
+
+  canvas.width  = Math.max(tW, 300);
+  canvas.height = Math.max(tH, 140);
+  initTable();
+}
+
+window.addEventListener('resize', resize);
+resize();
+loop();
+</script>
+</body>
+</html>
