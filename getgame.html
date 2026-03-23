@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>갯벌 생물 OX 스와이프 퀴즈</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a1628;
+    --bg-mid: #0f2035;
+    --bg-card: #f4f0e8;
+    --accent-o: #00c9a7;
+    --accent-x: #ff6b6b;
+    --accent-gold: #ffd700;
+    --accent-blue: #4ecdc4;
+    --text-light: #e8e2d6;
+    --text-dark: #2c1810;
+  }
+
+  * {
+    margin: 0; padding: 0; box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-light);
+    touch-action: none;
+  }
+
+  .ocean-bg {
+    position: fixed; inset: 0;
+    background: 
+      radial-gradient(ellipse at 50% 120%, rgba(78,205,196,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at 20% 0%, rgba(0,201,167,0.08) 0%, transparent 40%),
+      linear-gradient(180deg, #0a1628 0%, #0f2035 40%, #132d4a 100%);
+    z-index: 0;
+  }
+  .ocean-bg::before {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 120px;
+    background: linear-gradient(0deg, rgba(212,184,150,0.15) 0%, transparent 100%);
+  }
+
+  .wave-line {
+    position: fixed; bottom: 0; left: -50%; width: 200%;
+    height: 60px; opacity: 0.12;
+    z-index: 1; pointer-events: none;
+  }
+  .wave-line:nth-child(1) { animation: waveSlide 8s linear infinite; bottom: 20px; }
+  .wave-line:nth-child(2) { animation: waveSlide 12s linear infinite reverse; bottom: 50px; opacity: 0.08; }
+  .wave-line:nth-child(3) { animation: waveSlide 15s linear infinite; bottom: 80px; opacity: 0.05; }
+  @keyframes waveSlide { 0% { transform: translateX(0); } 100% { transform: translateX(25%); } }
+
+  .bubble {
+    position: fixed; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.15), transparent);
+    border: 1px solid rgba(255,255,255,0.08);
+    animation: bubbleRise linear infinite;
+    z-index: 1; pointer-events: none;
+  }
+  @keyframes bubbleRise {
+    0% { transform: translateY(0) scale(1); opacity: 0.6; }
+    100% { transform: translateY(-100vh) scale(0.5); opacity: 0; }
+  }
+
+  .screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 10;
+    transition: opacity 0.5s, transform 0.5s;
+    padding: 20px;
+  }
+  .screen.hidden { opacity: 0; pointer-events: none; transform: scale(0.95); }
+
+  #login-screen, #gameover-screen {
+    overflow-y: auto;
+    justify-content: flex-start;
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: 40px;
+  }
+
+  .login-logo {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: clamp(26px, 7vw, 40px);
+    text-align: center; line-height: 1.3;
+    margin-bottom: 6px; margin-top: 16px;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-o), var(--accent-gold));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 8px rgba(78,205,196,0.3));
+  }
+  .login-subtitle {
+    font-size: 13px; color: rgba(232,226,214,0.5);
+    margin-bottom: 24px; letter-spacing: 3px; text-transform: uppercase;
+  }
+
+  .login-card {
+    width: 100%; max-width: 340px;
+    background: rgba(255,255,255,0.04); backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px; padding: 28px 24px; flex-shrink: 0;
+  }
+  .field-group { margin-bottom: 18px; }
+  .field-label {
+    display: block; font-size: 11px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent-blue); margin-bottom: 8px;
+  }
+  .field-select, .field-input {
+    width: 100%; background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(255,255,255,0.1);
+    border-radius: 14px; padding: 14px 16px; font-size: 16px;
+    color: var(--text-light); font-family: 'Noto Sans KR', sans-serif;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    outline: none; -webkit-appearance: none; appearance: none;
+  }
+  .field-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234ecdc4' fill='none' stroke-width='2'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px;
+  }
+  .field-select option { background: #1a2a40; color: var(--text-light); }
+  .field-input::placeholder { color: rgba(232,226,214,0.3); }
+  .field-select:focus, .field-input:focus {
+    border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(78,205,196,0.15);
+  }
+  .btn-start {
+    width: 100%; padding: 16px; border: none; border-radius: 16px;
+    font-family: 'Black Han Sans', sans-serif; font-size: 20px; letter-spacing: 2px;
+    color: var(--bg-deep);
+    background: linear-gradient(135deg, var(--accent-o), var(--accent-blue));
+    cursor: pointer; transition: transform 0.2s; margin-top: 8px;
+    position: relative; overflow: hidden;
+  }
+  .btn-start:active { transform: scale(0.97); }
+  .btn-start::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.2) 50%, transparent 60%);
+    transform: translateX(-100%); animation: shimmer 3s infinite;
+  }
+  @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+  /* LEADERBOARD */
+  .leaderboard {
+    width: 100%; max-width: 340px; margin-top: 20px;
+    background: rgba(255,255,255,0.03); backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px; padding: 20px; flex-shrink: 0;
+  }
+  .lb-title {
+    font-family: 'Black Han Sans', sans-serif; font-size: 16px;
+    color: var(--accent-gold); text-align: center; margin-bottom: 14px; letter-spacing: 1px;
+  }
+  .lb-loading, .lb-empty {
+    text-align: center; font-size: 13px; color: rgba(232,226,214,0.35); padding: 12px 0;
+  }
+  .lb-row {
+    display: flex; align-items: center; padding: 10px 12px;
+    border-radius: 12px; margin-bottom: 6px; transition: background 0.2s;
+  }
+  .lb-row:last-child { margin-bottom: 0; }
+  .lb-row.rank-1 { background: rgba(255,215,0,0.1); }
+  .lb-row.rank-2 { background: rgba(192,192,192,0.06); }
+  .lb-row.rank-3 { background: rgba(205,127,50,0.06); }
+  .lb-row.is-me { border: 1.5px solid var(--accent-blue); }
+  .lb-rank {
+    font-family: 'Black Han Sans', sans-serif; font-size: 20px;
+    width: 36px; text-align: center; flex-shrink: 0;
+  }
+  .lb-rank.gold { color: #ffd700; }
+  .lb-rank.silver { color: #c0c0c0; }
+  .lb-rank.bronze { color: #cd7f32; }
+  .lb-rank.normal { color: rgba(232,226,214,0.4); font-size: 16px; }
+  .lb-info { flex: 1; margin-left: 10px; overflow: hidden; }
+  .lb-name {
+    font-size: 14px; font-weight: 700; color: var(--text-light);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .lb-class { font-size: 11px; color: rgba(232,226,214,0.35); }
+  .lb-score {
+    font-family: 'Black Han Sans', sans-serif; font-size: 20px;
+    color: var(--accent-gold); flex-shrink: 0; margin-left: 10px;
+  }
+
+  /* GAME HUD */
+  .game-hud {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 20px;
+    background: linear-gradient(180deg, rgba(10,22,40,0.9) 0%, transparent 100%);
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .hud-hearts { display: flex; gap: 6px; }
+  .heart {
+    font-size: 24px; transition: transform 0.3s, opacity 0.3s, filter 0.3s;
+    filter: drop-shadow(0 0 4px rgba(255,107,107,0.4));
+  }
+  .heart.lost { transform: scale(0) rotate(180deg); opacity: 0; filter: none; }
+  .hud-score {
+    font-family: 'Black Han Sans', sans-serif; font-size: 28px;
+    background: linear-gradient(135deg, var(--accent-gold), #ffaa00);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 6px rgba(255,215,0,0.3));
+  }
+  .hud-combo {
+    font-size: 13px; font-weight: 700; color: var(--accent-o);
+    opacity: 0; transform: translateY(4px); transition: all 0.3s; text-align: right;
+  }
+  .hud-combo.active { opacity: 1; transform: translateY(0); }
+  .hud-right { text-align: right; }
+
+  .direction-hints {
+    position: fixed; top: 50%; transform: translateY(-50%); z-index: 15;
+    display: flex; justify-content: space-between;
+    left: 8px; right: 8px; pointer-events: none; opacity: 0.25;
+  }
+  .hint-label {
+    font-family: 'Black Han Sans', sans-serif; font-size: 18px;
+    padding: 8px 6px; border-radius: 10px;
+    writing-mode: vertical-rl; letter-spacing: 4px;
+  }
+  .hint-o { color: var(--accent-o); border: 2px solid var(--accent-o); text-orientation: upright; }
+  .hint-x { color: var(--accent-x); border: 2px solid var(--accent-x); text-orientation: upright; }
+
+  .card-area {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(85vw, 360px); height: min(65vh, 480px); z-index: 16;
+  }
+  .card {
+    position: absolute; width: 100%; height: 100%;
+    border-radius: 28px; overflow: hidden; background: var(--bg-card);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+    cursor: grab; touch-action: none; transition: box-shadow 0.3s; will-change: transform;
+  }
+  .card.dragging { cursor: grabbing; box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+  .card-inner {
+    width: 100%; height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 24px; position: relative;
+  }
+  .card-image-wrap {
+    width: 100%; flex: 1; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; border-radius: 20px; margin-bottom: 16px;
+    background: rgba(0,0,0,0.04); position: relative;
+  }
+  .card-image-wrap img {
+    max-width: 100%; max-height: 100%; object-fit: contain;
+    border-radius: 16px; transition: opacity 0.3s;
+  }
+  .card-image-wrap .img-loader {
+    position: absolute; width: 40px; height: 40px;
+    border: 3px solid rgba(0,0,0,0.1); border-top-color: var(--accent-blue);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .card-word {
+    font-family: 'Black Han Sans', sans-serif; font-size: clamp(24px, 6vw, 36px);
+    color: var(--text-dark); text-align: center; padding: 8px 0;
+    width: 100%; border-top: 2px solid rgba(0,0,0,0.06); padding-top: 16px;
+  }
+  .card-overlay {
+    position: absolute; top: 16px; padding: 8px 20px; border-radius: 12px;
+    font-family: 'Black Han Sans', sans-serif; font-size: 32px;
+    opacity: 0; transition: opacity 0.15s; z-index: 5; pointer-events: none;
+  }
+  .card-overlay.o-label { left: 16px; border: 4px solid var(--accent-o); color: var(--accent-o); transform: rotate(-15deg); }
+  .card-overlay.x-label { right: 16px; border: 4px solid var(--accent-x); color: var(--accent-x); transform: rotate(15deg); }
+
+  /* FEEDBACK */
+  .feedback-overlay {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    z-index: 50; pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  }
+  .feedback-overlay.show { opacity: 1; }
+  .feedback-icon {
+    font-size: min(40vw, 200px); font-family: 'Black Han Sans', sans-serif;
+    text-shadow: 0 0 60px currentColor; animation: feedbackPop 0.5s ease-out;
+  }
+  .feedback-icon.correct { color: var(--accent-o); }
+  .feedback-icon.wrong { color: var(--accent-x); }
+  @keyframes feedbackPop {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 0; }
+  }
+  .combo-burst {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 55; font-family: 'Black Han Sans', sans-serif; font-size: 48px;
+    color: var(--accent-gold); text-shadow: 0 0 30px rgba(255,215,0,0.6);
+    pointer-events: none; opacity: 0;
+  }
+  .combo-burst.show { animation: comboBurst 1s ease-out forwards; }
+  @keyframes comboBurst {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+    100% { opacity: 0; transform: translate(-50%, -60%) scale(1); }
+  }
+
+  /* GAME OVER */
+  .gameover-card {
+    width: 100%; max-width: 340px;
+    background: rgba(255,255,255,0.04); backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 28px; padding: 36px 28px; text-align: center; flex-shrink: 0;
+  }
+  .gameover-title { font-family: 'Black Han Sans', sans-serif; font-size: 32px; color: var(--accent-x); margin-bottom: 6px; }
+  .gameover-subtitle { font-size: 14px; color: rgba(232,226,214,0.5); margin-bottom: 24px; }
+  .gameover-score {
+    font-family: 'Black Han Sans', sans-serif; font-size: 64px;
+    background: linear-gradient(135deg, var(--accent-gold), #ffaa00);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1; margin-bottom: 4px;
+  }
+  .gameover-label { font-size: 13px; color: rgba(232,226,214,0.4); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px; }
+  .gameover-rank {
+    font-family: 'Black Han Sans', sans-serif; font-size: 22px;
+    color: var(--accent-blue); margin-bottom: 24px; min-height: 28px;
+  }
+  .gameover-rank .rank-num { color: var(--accent-gold); font-size: 28px; }
+  .gameover-stats { display: flex; justify-content: center; gap: 24px; margin-bottom: 24px; }
+  .stat-item { text-align: center; }
+  .stat-value { font-family: 'Black Han Sans', sans-serif; font-size: 24px; color: var(--accent-blue); }
+  .stat-label { font-size: 11px; color: rgba(232,226,214,0.4); letter-spacing: 1px; }
+  .gameover-status { font-size: 13px; color: var(--accent-o); margin-bottom: 18px; min-height: 20px; }
+  .btn-retry {
+    width: 100%; padding: 16px; border: 2px solid var(--accent-blue);
+    border-radius: 16px; font-family: 'Black Han Sans', sans-serif;
+    font-size: 18px; letter-spacing: 2px; color: var(--accent-blue);
+    background: transparent; cursor: pointer; transition: all 0.3s;
+  }
+  .btn-retry:active { background: rgba(78,205,196,0.1); transform: scale(0.97); }
+
+  /* ACTION BUTTONS */
+  .btn-actions {
+    position: fixed; bottom: max(24px, env(safe-area-inset-bottom));
+    left: 0; right: 0; display: flex; justify-content: center; gap: 48px;
+    z-index: 20; pointer-events: none;
+  }
+  .btn-action {
+    width: 72px; height: 72px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-family: 'Black Han Sans', sans-serif;
+    border: 3px solid; background: rgba(10,22,40,0.7); backdrop-filter: blur(10px);
+    cursor: pointer; transition: transform 0.2s; pointer-events: auto;
+  }
+  .btn-action:active { transform: scale(0.9); }
+  .btn-o { border-color: var(--accent-o); color: var(--accent-o); box-shadow: 0 0 20px rgba(0,201,167,0.2); }
+  .btn-x { border-color: var(--accent-x); color: var(--accent-x); box-shadow: 0 0 20px rgba(255,107,107,0.2); }
+
+  .card-stack-shadow {
+    position: absolute; width: 100%; height: 100%; border-radius: 28px;
+    background: rgba(244,240,232,0.15); top: 8px;
+  }
+  .card-stack-shadow:nth-child(1) { transform: scale(0.95); opacity: 0.3; }
+  .card-stack-shadow:nth-child(2) { transform: scale(0.90); top: 16px; opacity: 0.15; }
+
+  #loading-screen { z-index: 100; background: var(--bg-deep); }
+  .loading-spinner {
+    width: 60px; height: 60px; border: 4px solid rgba(78,205,196,0.2);
+    border-top-color: var(--accent-blue); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin-bottom: 20px;
+  }
+  .loading-text { font-size: 14px; color: rgba(232,226,214,0.5); letter-spacing: 2px; }
+
+  .progress-bar-wrap {
+    position: fixed; bottom: max(108px, calc(env(safe-area-inset-bottom) + 84px));
+    left: 50%; transform: translateX(-50%); width: min(70vw, 300px);
+    height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px;
+    z-index: 17; overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-o));
+    border-radius: 2px; transition: width 0.4s; width: 0%;
+  }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); } 40% { transform: translateX(8px); }
+    60% { transform: translateX(-4px); } 80% { transform: translateX(4px); }
+  }
+  .shake { animation: shake 0.4s ease-out; }
+</style>
+</head>
+<body>
+
+<div class="ocean-bg"></div>
+<svg class="wave-line" viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0,30 Q180,0 360,30 T720,30 T1080,30 T1440,30" fill="none" stroke="#4ecdc4" stroke-width="2"/></svg>
+<svg class="wave-line" viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0,30 Q180,60 360,30 T720,30 T1080,30 T1440,30" fill="none" stroke="#00c9a7" stroke-width="1.5"/></svg>
+<svg class="wave-line" viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0,30 Q240,0 480,30 T960,30 T1440,30" fill="none" stroke="#4ecdc4" stroke-width="1"/></svg>
+
+<div class="bubble" style="width:8px;height:8px;left:10%;bottom:-10px;animation-duration:7s;animation-delay:0s;"></div>
+<div class="bubble" style="width:12px;height:12px;left:30%;bottom:-10px;animation-duration:9s;animation-delay:2s;"></div>
+<div class="bubble" style="width:6px;height:6px;left:60%;bottom:-10px;animation-duration:11s;animation-delay:1s;"></div>
+<div class="bubble" style="width:10px;height:10px;left:80%;bottom:-10px;animation-duration:8s;animation-delay:3s;"></div>
+<div class="bubble" style="width:5px;height:5px;left:45%;bottom:-10px;animation-duration:13s;animation-delay:5s;"></div>
+
+<!-- LOADING -->
+<div id="loading-screen" class="screen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">데이터 불러오는 중...</div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" class="screen hidden">
+  <div class="login-logo">🦀 갯벌 생물<br>OX 스와이프 퀴즈</div>
+  <div class="login-subtitle">swipe to answer</div>
+  <div class="login-card">
+    <div class="field-group">
+      <label class="field-label">학급 (반)</label>
+      <select id="class-select" class="field-select">
+        <option value="">선택하세요</option>
+        <option value="1반">1반</option><option value="2반">2반</option>
+        <option value="3반">3반</option><option value="4반">4반</option>
+        <option value="5반">5반</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">이름</label>
+      <input type="text" id="name-input" class="field-input" placeholder="이름을 입력하세요" autocomplete="off">
+    </div>
+    <button class="btn-start" id="btn-start">게임 시작 🌊</button>
+  </div>
+  <div class="leaderboard" id="login-leaderboard">
+    <div class="lb-title">🏆 하이스코어 TOP 5</div>
+    <div class="lb-loading" id="lb-login-loading">불러오는 중...</div>
+    <div id="lb-login-list"></div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game-screen" class="screen hidden">
+  <div class="game-hud">
+    <div class="hud-hearts" id="hud-hearts">
+      <span class="heart">❤️</span><span class="heart">❤️</span><span class="heart">❤️</span>
+    </div>
+    <div class="hud-right">
+      <div class="hud-score" id="hud-score">0</div>
+      <div class="hud-combo" id="hud-combo">🔥 0 콤보</div>
+    </div>
+  </div>
+  <div class="direction-hints">
+    <div class="hint-label hint-o">갯벌O</div>
+    <div class="hint-label hint-x">아님X</div>
+  </div>
+  <div class="card-area" id="card-area">
+    <div class="card-stack-shadow"></div>
+    <div class="card-stack-shadow"></div>
+    <div class="card" id="game-card">
+      <div class="card-overlay o-label" id="overlay-o">O</div>
+      <div class="card-overlay x-label" id="overlay-x">X</div>
+      <div class="card-inner">
+        <div class="card-image-wrap" id="card-image-wrap">
+          <div class="img-loader" id="img-loader"></div>
+          <img id="card-img" src="" alt="" draggable="false">
+        </div>
+        <div class="card-word" id="card-word">로딩 중...</div>
+      </div>
+    </div>
+  </div>
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill"></div></div>
+  <div class="btn-actions">
+    <div class="btn-action btn-o" id="btn-o">O</div>
+    <div class="btn-action btn-x" id="btn-x">X</div>
+  </div>
+</div>
+
+<!-- FEEDBACK -->
+<div class="feedback-overlay" id="feedback-overlay"><div class="feedback-icon" id="feedback-icon"></div></div>
+<div class="combo-burst" id="combo-burst"></div>
+
+<!-- GAME OVER -->
+<div id="gameover-screen" class="screen hidden">
+  <div class="gameover-card">
+    <div class="gameover-title">GAME OVER</div>
+    <div class="gameover-subtitle">수고했어요!</div>
+    <div class="gameover-score" id="final-score">0</div>
+    <div class="gameover-label">최종 점수</div>
+    <div class="gameover-rank" id="gameover-rank"></div>
+    <div class="gameover-stats">
+      <div class="stat-item"><div class="stat-value" id="stat-correct">0</div><div class="stat-label">정답</div></div>
+      <div class="stat-item"><div class="stat-value" id="stat-wrong">0</div><div class="stat-label">오답</div></div>
+      <div class="stat-item"><div class="stat-value" id="stat-maxcombo">0</div><div class="stat-label">최고 콤보</div></div>
+    </div>
+    <div class="gameover-status" id="gameover-status">점수 기록 중...</div>
+    <button class="btn-retry" id="btn-retry">다시 도전하기 🔄</button>
+  </div>
+  <div class="leaderboard" style="margin-top:20px;">
+    <div class="lb-title">🏆 하이스코어 TOP 5</div>
+    <div id="lb-gameover-list"></div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// CONFIG - GAS Web App URL을 여기에!
+// =============================================
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbx3A_zUr_tm-XNClqD3HZjkOm7I5ALfXLWvR2yuHoLTUxH9vb9VhKI_g_IXNteMdCQ/exec';
+
+// =============================================
+// DEMO DATA (GAS 미연동 시 사용)
+// =============================================
+const DEMO_DATA = [
+  { image_url: '', word: '꽃게', is_tidal: true },
+  { image_url: '', word: '갯지렁이', is_tidal: true },
+  { image_url: '', word: '조개', is_tidal: true },
+  { image_url: '', word: '고양이', is_tidal: false },
+  { image_url: '', word: '망둥어', is_tidal: true },
+  { image_url: '', word: '강아지', is_tidal: false },
+  { image_url: '', word: '칠게', is_tidal: true },
+  { image_url: '', word: '농게', is_tidal: true },
+  { image_url: '', word: '자동차', is_tidal: false },
+  { image_url: '', word: '짱뚱어', is_tidal: true },
+  { image_url: '', word: '바지락', is_tidal: true },
+  { image_url: '', word: '햄버거', is_tidal: false },
+  { image_url: '', word: '갯벌낙지', is_tidal: true },
+  { image_url: '', word: '비둘기', is_tidal: false },
+  { image_url: '', word: '쏙', is_tidal: true },
+  { image_url: '', word: '축구공', is_tidal: false },
+  { image_url: '', word: '말뚝망둥어', is_tidal: true },
+  { image_url: '', word: '컴퓨터', is_tidal: false },
+  { image_url: '', word: '동죽', is_tidal: true },
+  { image_url: '', word: '사자', is_tidal: false },
+];
+const DEMO_SCORES = [
+  { class: '2반', name: '김바다', score: 23 },
+  { class: '1반', name: '이갯벌', score: 18 },
+  { class: '3반', name: '박조개', score: 15 },
+  { class: '2반', name: '최낙지', score: 12 },
+  { class: '1반', name: '정해삼', score: 9 },
+];
+
+// =============================================
+// SOUND ENGINE (Web Audio API - 파일 불필요)
+// =============================================
+class SoundFX {
+  constructor() { this.ctx = null; }
+
+  _ensure() {
+    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  }
+
+  correct() {
+    const ctx = this._ensure(), now = ctx.currentTime;
+    const osc = ctx.createOscillator(), osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523, now);
+    osc.frequency.setValueAtTime(659, now + 0.08);
+    osc.frequency.setValueAtTime(784, now + 0.16);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1046, now);
+    osc2.frequency.setValueAtTime(1318, now + 0.08);
+    osc2.frequency.setValueAtTime(1568, now + 0.16);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+    osc.start(now); osc2.start(now); osc.stop(now + 0.35); osc2.stop(now + 0.35);
+  }
+
+  wrong() {
+    const ctx = this._ensure(), now = ctx.currentTime;
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, now);
+    osc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now); osc.stop(now + 0.35);
+  }
+
+  combo() {
+    const ctx = this._ensure(), now = ctx.currentTime;
+    [523, 659, 784, 1047].forEach((freq, i) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      const t = now + i * 0.07;
+      osc.type = 'sine'; osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.15, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t + 0.5);
+    });
+  }
+
+  gameOver() {
+    const ctx = this._ensure(), now = ctx.currentTime;
+    [392, 349, 330, 262].forEach((freq, i) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      const t = now + i * 0.2;
+      osc.type = 'sine'; osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t + 0.4);
+    });
+  }
+
+  tap() {
+    const ctx = this._ensure(), now = ctx.currentTime;
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now); osc.stop(now + 0.05);
+  }
+}
+const sfx = new SoundFX();
+
+// =============================================
+// GAME STATE
+// =============================================
+let questions = [], allScores = [];
+let currentIndex = 0, score = 0, combo = 0, maxCombo = 0;
+let lives = 3, correctCount = 0, wrongCount = 0, bonusTotal = 0;
+let isAnimating = false, playerClass = '', playerName = '';
+let startX = 0, currentDragX = 0, isDragging = false;
+const SWIPE_THRESHOLD = 80;
+
+const $ = s => document.querySelector(s);
+const screens = { loading: $('#loading-screen'), login: $('#login-screen'), game: $('#game-screen'), gameover: $('#gameover-screen') };
+const card = $('#game-card'), cardImg = $('#card-img'), cardWord = $('#card-word');
+const imgLoader = $('#img-loader'), overlayO = $('#overlay-o'), overlayX = $('#overlay-x');
+const hudScore = $('#hud-score'), hudCombo = $('#hud-combo'), hudHearts = $('#hud-hearts');
+const feedbackOverlay = $('#feedback-overlay'), feedbackIcon = $('#feedback-icon');
+const comboBurst = $('#combo-burst'), progressFill = $('#progress-fill');
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+function showScreen(name) {
+  Object.entries(screens).forEach(([k, el]) => el.classList.toggle('hidden', k !== name));
+}
+
+// =============================================
+// LEADERBOARD
+// =============================================
+function renderLeaderboard(containerId, scores, myName, myClass) {
+  const container = $(containerId);
+  container.innerHTML = '';
+  if (!scores || scores.length === 0) {
+    container.innerHTML = '<div class="lb-empty">아직 기록이 없습니다</div>';
+    return;
+  }
+  const top5 = [...scores].sort((a, b) => b.score - a.score).slice(0, 5);
+  const medals = ['🥇', '🥈', '🥉'];
+  const rankCls = ['gold', 'silver', 'bronze'];
+
+  top5.forEach((entry, i) => {
+    const isMe = myName && entry.name === myName && entry.class === myClass;
+    const row = document.createElement('div');
+    row.className = `lb-row${i < 3 ? ` rank-${i + 1}` : ''}${isMe ? ' is-me' : ''}`;
+    row.innerHTML = `
+      <div class="lb-rank ${i < 3 ? rankCls[i] : 'normal'}">${i < 3 ? medals[i] : i + 1}</div>
+      <div class="lb-info">
+        <div class="lb-name">${entry.name}${isMe ? ' (나)' : ''}</div>
+        <div class="lb-class">${entry.class}</div>
+      </div>
+      <div class="lb-score">${entry.score}</div>`;
+    container.appendChild(row);
+  });
+}
+
+function calculateRank(myScore, scores) {
+  if (!scores || scores.length === 0) return 1;
+  let rank = 1;
+  for (const s of scores) { if (s.score > myScore) rank++; }
+  return rank;
+}
+
+// =============================================
+// DATA
+// =============================================
+async function fetchQuestions() {
+  if (!GAS_URL) return DEMO_DATA;
+  try {
+    const r = await fetch(GAS_URL + '?type=questions');
+    const d = await r.json();
+    return (d && Array.isArray(d) && d.length > 0) ? d : DEMO_DATA;
+  } catch (e) { console.error('문제 로드 실패:', e); return DEMO_DATA; }
+}
+
+async function fetchScores() {
+  if (!GAS_URL) return DEMO_SCORES;
+  try {
+    const r = await fetch(GAS_URL + '?type=scores');
+    const d = await r.json();
+    return (d && Array.isArray(d)) ? d : [];
+  } catch (e) { console.error('스코어 로드 실패:', e); return []; }
+}
+
+async function postScore(cls, name, finalScore) {
+  if (!GAS_URL) return { status: 'demo' };
+  try {
+    const r = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ class: cls, name: name, score: finalScore }),
+    });
+    return await r.json();
+  } catch (e) { console.error('점수 저장 실패:', e); return { status: 'error' }; }
+}
+
+// =============================================
+// INIT
+// =============================================
+async function init() {
+  showScreen('loading');
+  const [rawQ, rawS] = await Promise.all([fetchQuestions(), fetchScores()]);
+  questions = shuffle(rawQ);
+  allScores = rawS;
+  $('#lb-login-loading').style.display = 'none';
+  renderLeaderboard('#lb-login-list', allScores);
+  showScreen('login');
+}
+
+// =============================================
+// GAME
+// =============================================
+function startGame() {
+  playerClass = $('#class-select').value;
+  playerName = $('#name-input').value.trim();
+  if (!playerClass) { alert('학급을 선택해주세요!'); return; }
+  if (!playerName) { alert('이름을 입력해주세요!'); return; }
+  sfx._ensure();
+  currentIndex = 0; score = 0; combo = 0; maxCombo = 0;
+  lives = 3; correctCount = 0; wrongCount = 0; bonusTotal = 0; isAnimating = false;
+  questions = shuffle(questions);
+  hudHearts.querySelectorAll('.heart').forEach(h => h.classList.remove('lost'));
+  updateHUD(); loadCard(currentIndex); showScreen('game');
+}
+
+function loadCard(index) {
+  if (index >= questions.length) { questions = shuffle(questions); currentIndex = 0; index = 0; }
+  const q = questions[index];
+  card.style.transform = ''; card.style.transition = 'none'; card.style.opacity = '1';
+  overlayO.style.opacity = '0'; overlayX.style.opacity = '0';
+  if (q.image_url && q.image_url.trim() !== '') {
+    imgLoader.style.display = 'block'; cardImg.style.opacity = '0'; cardImg.style.display = 'block';
+    cardImg.onload = () => { imgLoader.style.display = 'none'; cardImg.style.opacity = '1'; };
+    cardImg.onerror = () => { imgLoader.style.display = 'none'; cardImg.style.display = 'none'; };
+    cardImg.src = q.image_url;
+  } else { imgLoader.style.display = 'none'; cardImg.style.display = 'none'; }
+  cardWord.textContent = q.word;
+  progressFill.style.width = `${Math.min(((correctCount + wrongCount) / questions.length) * 100, 100)}%`;
+}
+
+function updateHUD() {
+  hudScore.textContent = score + bonusTotal;
+  if (combo >= 2) { hudCombo.textContent = `🔥 ${combo} 콤보`; hudCombo.classList.add('active'); }
+  else { hudCombo.classList.remove('active'); }
+}
+
+function updateHearts() {
+  hudHearts.querySelectorAll('.heart').forEach((h, i) => h.classList.toggle('lost', i >= lives));
+}
+
+function submitAnswer(answer) {
+  if (isAnimating) return;
+  isAnimating = true;
+  const q = questions[currentIndex];
+  const isCorrect = (answer === 'O' && q.is_tidal) || (answer === 'X' && !q.is_tidal);
+  if (isCorrect) {
+    score++; combo++; correctCount++;
+    if (combo > maxCombo) maxCombo = combo;
+    sfx.correct();
+    if (combo > 0 && combo % 10 === 0) { bonusTotal++; showComboBurst(combo); sfx.combo(); }
+    showFeedback(true);
+  } else {
+    combo = 0; lives--; wrongCount++;
+    updateHearts(); showFeedback(false); sfx.wrong();
+    document.body.classList.add('shake');
+    setTimeout(() => document.body.classList.remove('shake'), 400);
+  }
+  updateHUD();
+  animateCardOut(answer === 'O' ? -1 : 1, () => {
+    if (lives <= 0) { gameOver(); }
+    else { currentIndex++; loadCard(currentIndex); isAnimating = false; }
+  });
+}
+
+function animateCardOut(dir, cb) {
+  card.style.transition = 'transform 0.4s ease-out, opacity 0.4s ease-out';
+  card.style.transform = `translateX(${dir * 120}vw) rotate(${dir * 30}deg)`;
+  card.style.opacity = '0';
+  setTimeout(cb, 400);
+}
+
+function showFeedback(correct) {
+  feedbackIcon.className = 'feedback-icon ' + (correct ? 'correct' : 'wrong');
+  feedbackIcon.textContent = correct ? 'O' : 'X';
+  feedbackOverlay.classList.add('show');
+  setTimeout(() => feedbackOverlay.classList.remove('show'), 500);
+}
+
+function showComboBurst(c) {
+  comboBurst.textContent = `🔥 ${c} COMBO! +1`;
+  comboBurst.className = 'combo-burst show';
+  setTimeout(() => { comboBurst.className = 'combo-burst'; }, 1000);
+}
+
+async function gameOver() {
+  const totalScore = score + bonusTotal;
+  sfx.gameOver();
+  $('#final-score').textContent = totalScore;
+  $('#stat-correct').textContent = correctCount;
+  $('#stat-wrong').textContent = wrongCount;
+  $('#stat-maxcombo').textContent = maxCombo;
+
+  // 순위 계산 (저장 전, 기존 데이터 기반)
+  const rank = calculateRank(totalScore, allScores);
+  const totalPlayers = allScores.length + 1;
+  const medals = ['🥇', '🥈', '🥉'];
+  if (rank <= 3) {
+    $('#gameover-rank').innerHTML = `${medals[rank - 1]} 전체 <span class="rank-num">${rank}</span>위!`;
+  } else {
+    $('#gameover-rank').innerHTML = `전체 <span class="rank-num">${rank}</span>위 / ${totalPlayers}명`;
+  }
+
+  showScreen('gameover');
+  $('#gameover-status').textContent = '점수 기록 중...';
+
+  const result = await postScore(playerClass, playerName, totalScore);
+  const myEntry = { class: playerClass, name: playerName, score: totalScore };
+
+  if (result.status === 'demo') {
+    $('#gameover-status').textContent = '(데모 모드 - 점수 저장 생략)';
+  } else if (result.status === 'error') {
+    $('#gameover-status').textContent = '점수 저장 실패 😢';
+  } else {
+    $('#gameover-status').textContent = '점수가 기록되었습니다! ✅';
+    allScores.push(myEntry);
+  }
+
+  // 내 점수 포함해서 리더보드 표시 (데모/에러여도 임시 표시)
+  const displayScores = result.status !== 'success' && result.status !== 'demo'
+    ? allScores : (result.status === 'demo' ? [...allScores, myEntry] : allScores);
+  renderLeaderboard('#lb-gameover-list', displayScores, playerName, playerClass);
+}
+
+// =============================================
+// SWIPE
+// =============================================
+function getXY(e) {
+  return e.touches ? { x: e.touches[0].clientX } : { x: e.clientX };
+}
+
+function onDown(e) {
+  if (isAnimating) return;
+  isDragging = true; startX = getXY(e).x; currentDragX = 0;
+  card.style.transition = 'none'; card.classList.add('dragging');
+  sfx.tap();
+}
+
+function onMove(e) {
+  if (!isDragging || isAnimating) return;
+  e.preventDefault();
+  currentDragX = getXY(e).x - startX;
+  card.style.transform = `translateX(${currentDragX}px) rotate(${currentDragX * 0.08}deg)`;
+  const r = Math.min(Math.abs(currentDragX) / SWIPE_THRESHOLD, 1);
+  if (currentDragX < -20) { overlayO.style.opacity = r; overlayX.style.opacity = '0'; }
+  else if (currentDragX > 20) { overlayX.style.opacity = r; overlayO.style.opacity = '0'; }
+  else { overlayO.style.opacity = '0'; overlayX.style.opacity = '0'; }
+}
+
+function onUp() {
+  if (!isDragging || isAnimating) return;
+  isDragging = false; card.classList.remove('dragging');
+  if (currentDragX < -SWIPE_THRESHOLD) submitAnswer('O');
+  else if (currentDragX > SWIPE_THRESHOLD) submitAnswer('X');
+  else {
+    card.style.transition = 'transform 0.3s ease-out'; card.style.transform = '';
+    overlayO.style.opacity = '0'; overlayX.style.opacity = '0';
+  }
+}
+
+card.addEventListener('mousedown', onDown);
+card.addEventListener('touchstart', onDown, { passive: true });
+window.addEventListener('mousemove', onMove);
+window.addEventListener('touchmove', onMove, { passive: false });
+window.addEventListener('mouseup', onUp);
+window.addEventListener('touchend', onUp);
+
+$('#btn-o').addEventListener('click', () => submitAnswer('O'));
+$('#btn-x').addEventListener('click', () => submitAnswer('X'));
+$('#btn-start').addEventListener('click', startGame);
+$('#btn-retry').addEventListener('click', async () => {
+  isAnimating = false;
+  // 재도전 시 최신 스코어 새로고침
+  fetchScores().then(s => { allScores = s; renderLeaderboard('#lb-login-list', allScores); });
+  startGame();
+});
+$('#name-input').addEventListener('keydown', e => { if (e.key === 'Enter') startGame(); });
+
+init();
+</script>
+</body>
+</html>
