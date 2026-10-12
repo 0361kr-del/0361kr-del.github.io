@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { aiErrors } from '../shared/ai-errors';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserSessionPersistence, type User } from 'firebase/auth';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
@@ -22,6 +23,7 @@ function connect() {
 function explain(error: unknown) {
   const e = error as { code?: string; message?: string };
   const text = `${e.code || ''} ${e.message || ''}`;
+  if (e.message && Object.hasOwn(aiErrors, e.message)) return `${aiErrors[e.message]} (진단 코드: ${e.message})`;
   if (/ACCESS_DENIED|permission-denied/.test(text)) return '교사 계정 승인이 필요합니다. 아래 로그인 UID를 확인하고 관리자 승인 후 다시 시도하세요.';
   if (/appCheck|app-check|unauthenticated/i.test(text)) return '앱 인증을 확인하지 못했습니다. App Check 등록과 사이트 도메인 설정을 확인하세요.';
   if (/unauthorized-domain/.test(text)) return 'Firebase Authentication의 승인된 도메인에 현재 사이트 주소를 등록해야 합니다.';
@@ -31,7 +33,9 @@ function explain(error: unknown) {
   if (/AI_RATE_LIMIT|AI_DAILY_LIMIT|resource-exhausted/.test(text)) return 'API 사용량 또는 시험 호출 한도에 도달했습니다. 잔액과 한도를 확인하세요.';
   if (/PERSONAL_DATA_DETECTED/.test(text)) return '연락처 등 개인정보가 감지되었습니다. 가상 내용만 입력하세요.';
   if (/AI_PREVIEW_NOT_ENABLED/.test(text)) return '서버의 교사 AI 시험 설정이 아직 켜지지 않았습니다.';
-  return '요청을 완료하지 못했습니다. 입력은 유지됩니다. 반복해서 누르지 말고 서버 상태를 확인하세요.';
+  const codes = ['functions/internal','functions/unavailable','functions/deadline-exceeded','functions/not-found','functions/invalid-argument','functions/failed-precondition','auth/network-request-failed'];
+  const code = codes.includes(e.code || '') ? e.code : 'UNKNOWN_ERROR';
+  return `요청을 완료하지 못했습니다. 입력은 유지됩니다. (진단 코드: ${code})`;
 }
 
 export function AiTrial() {

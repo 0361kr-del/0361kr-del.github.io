@@ -36,16 +36,21 @@ export async function generateWithOpenAI(raw: unknown, apiKey: string, fetcher: 
   if(!apiKey.trim()) throw new Error('AI_NOT_CONFIGURED');
   const input=aiPreviewInput.parse(raw),body=buildAiRequest(input);
   let response: Response;
-  try { response=await fetcher('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(25000)}); }
-  catch { throw new Error('AI_UNAVAILABLE'); }
-  if(!response.ok) throw new Error(response.status===401?'AI_KEY_INVALID':response.status===429?'AI_RATE_LIMIT':'AI_UNAVAILABLE');
+  try { response=await fetcher('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${apiKey.trim()}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(25000)}); }
+  catch { throw new Error('AI_NETWORK_ERROR'); }
+  if(!response.ok) {
+    const codes: Record<number,string> = {400:'AI_REQUEST_REJECTED',401:'AI_KEY_INVALID',403:'AI_ACCESS_FORBIDDEN',404:'AI_MODEL_UNAVAILABLE',429:'AI_RATE_LIMIT'};
+    throw new Error(codes[response.status] || (response.status>=500?'AI_PROVIDER_ERROR':'AI_UNAVAILABLE'));
+  }
   const data=await response.json() as {status?:string;output?:Array<{type:string;content?:Array<{type:string;text?:string}>}>;usage?:{input_tokens:number;output_tokens:number}};
   if(data.status!=='completed') throw new Error('AI_INCOMPLETE');
   const content=(data.output||[]).filter(x=>x.type==='message').flatMap(x=>x.content||[]);
   if(content.some(c=>c.type==='refusal')) throw new Error('AI_REFUSED');
   const text=content.filter(c=>c.type==='output_text').map(c=>c.text||'').join('');
   let parsed: unknown;try{parsed=JSON.parse(text);}catch{throw new Error('AI_INVALID_OUTPUT');}
-  const result=input.kind==='question'?questionResult.parse(parsed):articleResult.parse(parsed);
+  const checked=input.kind==='question'?questionResult.safeParse(parsed):articleResult.safeParse(parsed);
+  if(!checked.success) throw new Error('AI_INVALID_OUTPUT');
+  const result=checked.data;
   if('quotes' in result && result.quotes.some(q=>!input.transcript.some(t=>t.role==='student'&&t.text.includes(q)))) throw new Error('AI_UNSUPPORTED_QUOTE');
   return {kind:input.kind,result,usage:data.usage?{inputTokens:data.usage.input_tokens,outputTokens:data.usage.output_tokens}:null,model:body.model};
 }

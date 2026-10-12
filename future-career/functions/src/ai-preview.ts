@@ -3,6 +3,7 @@ import { defineSecret, defineBoolean } from 'firebase-functions/params';
 import { getFirestore } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { safeAiError } from '../../shared/ai-errors.js';
 import { aiPreviewInput, generateWithOpenAI } from './openai.js';
 const key=defineSecret('OPENAI_API_KEY');
 const enabled=defineBoolean('OPENAI_TEACHER_PREVIEW_ENABLED',{default:false});
@@ -27,5 +28,5 @@ export const aiPreview=onCall({region:'asia-northeast3',secrets:[key],enforceApp
   });
   if(cached)return cached;
   try {const result=await generateWithOpenAI(input,key.value());await op.update({status:'done',result,completedAt:Date.now()});return result;}
-  catch(error){await op.update({status:'failed',completedAt:Date.now()});const code=error instanceof Error?error.message:'';const safe=['AI_NOT_CONFIGURED','AI_KEY_INVALID','AI_RATE_LIMIT','AI_REFUSED','PERSONAL_DATA_DETECTED','MINIMUM_ANSWERS','INTERVIEW_LIMIT_REACHED'].includes(code)?code:'AI_UNAVAILABLE';throw new HttpsError('failed-precondition',safe);}
+  catch(error){await op.update({status:'failed',completedAt:Date.now()});const safe=safeAiError(error);console.warn(JSON.stringify({event:'ai_preview_failed',code:safe}));throw new HttpsError('failed-precondition',safe);}
 });
