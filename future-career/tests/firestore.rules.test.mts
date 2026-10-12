@@ -1,0 +1,15 @@
+import { test, before, after } from 'node:test';
+import { readFile } from 'node:fs/promises';
+import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
+import { doc, setDoc, getDoc, getDocs, collection } from 'firebase/firestore';
+let env: RulesTestEnvironment;
+before(async () => { env = await initializeTestEnvironment({ projectId: 'demo-future-career', firestore: { rules: await readFile('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8080 } }); await env.withSecurityRulesDisabled(async ctx => { const db = ctx.firestore(); await Promise.all([setDoc(doc(db, 'teachers/t1'), { active: true }), setDoc(doc(db, 'teachers/t2'), { active: true }), setDoc(doc(db, 'teachers/disabled'), { active: false }), setDoc(doc(db, 'classes/c1'), { teacherUid: 't1', status: 'OPEN', retainUntil: Date.now() + 1000000 }), setDoc(doc(db, 'sessions/s1'), { ownerUid: 'u1', teacherUid: 't1', classId: 'c1', retainUntil: Date.now() + 1000000 }), setDoc(doc(db, 'sessions/s1/private/student'), { name: '가상학생' }), setDoc(doc(db, 'sessions/s1/messages/q-1'), { text: '질문', seq: 1 }), setDoc(doc(db, 'sessions/expired'), { ownerUid: 'u1', teacherUid: 't1', classId: 'c1', retainUntil: 0 }), setDoc(doc(db, 'classCodes/secret'), { classId: 'c1' })]); }); });
+after(async () => { await env.cleanup(); });
+test('student reads own session and messages', async () => { const db = env.authenticatedContext('u1').firestore(); await assertSucceeds(getDoc(doc(db, 'sessions/s1'))); await assertSucceeds(getDocs(collection(db, 'sessions/s1/messages'))); });
+test('teacher reads own student', async () => { await assertSucceeds(getDoc(doc(env.authenticatedContext('t1').firestore(), 'sessions/s1/private/student'))); });
+test('other students and teachers cannot read', async () => { for (const uid of ['u2', 't2', 'disabled']) await assertFails(getDoc(doc(env.authenticatedContext(uid).firestore(), 'sessions/s1'))); });
+test('unauthenticated reads denied', async () => { await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'sessions/s1'))); });
+test('all direct writes denied including own student and teacher', async () => { for (const uid of ['u1', 't1']) await assertFails(setDoc(doc(env.authenticatedContext(uid).firestore(), 'sessions/s1'), { ownerUid: uid })); });
+test('collection-wide session enumeration denied', async () => { await assertFails(getDocs(collection(env.authenticatedContext('t1').firestore(), 'sessions'))); });
+test('codes and expired sessions denied', async () => { const db = env.authenticatedContext('u1').firestore(); await assertFails(getDoc(doc(db, 'classCodes/secret'))); await assertFails(getDoc(doc(db, 'sessions/expired'))); });
+test('deleted class denies retained children', async () => { await env.withSecurityRulesDisabled(async ctx => { await setDoc(doc(ctx.firestore(), 'classes/c1'), { status: 'DELETING' }, { merge: true }); }); await assertFails(getDoc(doc(env.authenticatedContext('u1').firestore(), 'sessions/s1/messages/q-1'))); });
