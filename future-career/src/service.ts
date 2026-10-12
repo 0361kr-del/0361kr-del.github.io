@@ -4,6 +4,8 @@ import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { appendAnswer, classInput, finishSession, startSession, studentInput, type ClassRecord, type Session } from '../shared/domain';
 
+import { createPreviewArticle, reviseArticle, submitArticle, type Article } from '../shared/article';
+
 export const demo = import.meta.env.VITE_APP_MODE !== 'firebase';
 const emulator = import.meta.env.VITE_USE_EMULATORS === 'true';
 let auth: ReturnType<typeof getAuth> | undefined;
@@ -37,14 +39,73 @@ const sessions = new Map<string, Session>();
 const results = new Map<string, { hash: string; value: unknown }>();
 const codes = new Map(classes.map((c, i) => [`ABCD600${i + 1}`, c.id]));
 const admissions = new Map<string, { classId: string; number: number; used: boolean }>([['SAMPLE-STUDENT-0000000001', { classId: classes[0].id, number: 1, used: false }]]);
+const articles = new Map<string, Article>();
+const STORAGE_KEY = 'future-career-preview-v2';
+export let storageAvailable = true;
+try {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    const saved = JSON.parse(raw);
+    if (saved.version === 2 && Array.isArray(saved.classes) && Array.isArray(saved.sessions)) {
+      classes.splice(0, classes.length, ...saved.classes);
+      for (const [k, v] of saved.sessions) sessions.set(k, v);
+      for (const [k, v] of saved.articles || []) articles.set(k, v);
+      codes.clear(); for (const [k, v] of saved.codes) codes.set(k, v);
+      admissions.clear(); for (const [k, v] of saved.admissions) admissions.set(k, v);
+    }
+  }
+} catch { storageAvailable = false; }
+// Fictional examples make the teacher preview reviewable immediately.
+if (demo && sessions.size === 0) {
+  const examples = [
+    { idx: 1, name: '가상·하늘', career: '우주 정원사', finished: true, submitted: true, answers: ['우주 정거장에서 채소가 잘 자라도록 빛과 물을 관리합니다.', '식물이 자라는 모습을 기록하고 과학과 생태를 공부했습니다.', '잎이 노랗게 변했을 때 동료와 양분을 점검해 해결했습니다.', '제가 기른 상추를 대원들이 맛있게 먹었을 때 기뻤습니다.', '먼 우주에서도 신선한 음식을 먹을 수 있도록 돕습니다.'] },
+    { idx: 2, name: '가상·도윤', career: '해양 생태 연구원', finished: true, submitted: false, answers: ['바닷속 산호와 물고기를 관찰하고 기록합니다.', '수영을 배우고 바다 생물을 꾸준히 공부했습니다.', '흐린 물에서 관찰하기 어려워 다른 시간에 다시 조사했습니다.', '아픈 산호가 건강해지는 모습을 보았을 때 보람을 느꼈습니다.', '바다의 변화를 알려 사람들이 생물을 보호하도록 돕습니다.'] },
+    { idx: 3, name: '가상·서연', career: '로봇 디자이너', finished: false, submitted: false, answers: ['사람들이 일상에서 편리하게 사용할 수 있는 로봇을 설계합니다.', '물건을 직접 만들어 보고 코딩과 그림을 배웠습니다.'] }
+  ];
+  for (const x of examples) {
+    const c = classes[x.idx];
+    let s = startSession(`sample-${x.idx}`, c, { name: x.name, career: x.career, grade: 6, classroom: c.classroom, number: 1, noticeAccepted: true }, 'demo-student', now);
+    for (const text of x.answers) s = appendAnswer(s, { text, questionId: s.currentQuestionId, expectedRevision: s.revision }, 'demo-student', now);
+    if (x.finished) s = finishSession(s, 'demo-student', s.revision, now);
+    sessions.set(s.id, s); c.studentCount++;
+    if (x.finished) {
+      let a = createPreviewArticle(s, now);
+      if (x.submitted) a = submitArticle(a, { title: '우주에서 키운 상추, 식탁 위에 희망을 심다', subtitle: '우주 정원사 하늘의 가상 인터뷰', body: '2040년 우주 정원사로 일하는 하늘은 우주 정거장에서 채소가 자라도록 빛과 물을 관리한다.\n\n하늘은 식물의 변화를 기록하며 과학과 생태를 공부했다고 이야기했다. 잎이 노랗게 변했을 때는 동료와 함께 양분을 점검해 문제를 해결했다.\n\n“제가 기른 상추를 대원들이 맛있게 먹었을 때 기뻤습니다.” 하늘에게 가장 보람 있는 순간을 묻자 돌아온 답이다.\n\n하늘은 먼 우주에서도 신선한 음식을 먹을 수 있도록 돕고 싶다고 말했다.\n\n※ 이 기사는 미래 직업을 상상한 가상 인터뷰를 바탕으로 썼습니다.' }, a.revision, now);
+      articles.set(s.id, a);
+    }
+  }
+}
+function persist() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, classes, sessions: [...sessions], articles: [...articles], codes: [...codes], admissions: [...admissions] })); storageAvailable = true; }
+  catch { storageAvailable = false; }
+}
+export function resetPreview() {
+  localStorage.removeItem(STORAGE_KEY);
+  for (const key of Object.keys(localStorage)) if (key.startsWith('career-answer-') || key.startsWith('career-article-')) localStorage.removeItem(key);
+  sessionStorage.removeItem('career-session'); location.reload();
+}
 let demoTeacher = false;
 export async function call<T>(method: string, payload: Record<string, unknown> = {}, requestId: string = crypto.randomUUID()): Promise<T> {
   if (!demo) { await setup(); return (await httpsCallable(functions!, 'api')({ method, payload, requestId })).data as T; }
   const hash = JSON.stringify({ method, payload }); const cached = results.get(requestId);
   if (cached) { if (cached.hash !== hash) throw new Error('IDEMPOTENCY_CONFLICT'); return cached.value as T; }
-  const value = mock(method, payload); results.set(requestId, { hash, value }); return value as T;
+  const value = mock(method, payload); results.set(requestId, { hash, value }); persist(); return structuredClone(value) as T;
 }
 function mock(method: string, p: Record<string, unknown>): unknown {
+  if (method === 'getArticle' || method === 'generateArticle' || method === 'saveArticle' || method === 'submitArticle') {
+    const session = sessions.get(String(p.sessionId));
+    if (!session) throw new Error('SESSION_NOT_FOUND');
+    let article = articles.get(session.id);
+    if (method === 'getArticle') return { article: article || null };
+    if (demoTeacher) throw new Error('ACCESS_DENIED');
+    if (method === 'generateArticle') { if (!article) { article = createPreviewArticle(session, Date.now()); articles.set(session.id, article); } return { article }; }
+    if (!article) throw new Error('ARTICLE_NOT_FOUND');
+    article = method === 'saveArticle' ? reviseArticle(article, p.content, Number(p.expectedRevision), Date.now()) : submitArticle(article, p.content, Number(p.expectedRevision), Date.now());
+    articles.set(session.id, article); return { article };
+  }
+  if (method === 'previewSummary') return { submitted: [...articles.values()].filter(a => a.submitted).map(a => a.sessionId), editing: [...articles.keys()] };
+  if (method === 'previewResume') { const session = [...sessions.values()].filter(s => !s.id.startsWith('sample-')).sort((a,b) => b.updatedAt-a.updatedAt)[0]; return { session: session || null }; }
+
   const teacherOnly = ['createClass', 'listClasses', 'listSessions', 'issueAdmission', 'setClassState', 'issueRecovery'];
   if (teacherOnly.includes(method) && !demoTeacher) throw new Error('ACCESS_DENIED');
   if (method === 'teacherStatus') return { active: demoTeacher };
@@ -58,5 +119,5 @@ function mock(method: string, p: Record<string, unknown>): unknown {
   if (method === 'sendAnswer' || method === 'finishInterview') { const session = sessions.get(String(p.sessionId)); if (!session) throw new Error('SESSION_NOT_FOUND'); const { sessionId: ignored, ...answer } = p; const next = method === 'sendAnswer' ? appendAnswer(session, answer, 'demo-student', Date.now()) : finishSession(session, 'demo-student', Number(p.expectedRevision), Date.now()); sessions.set(next.id, next); return { session: next }; }
   throw new Error('NOT_AVAILABLE_IN_DEMO');
 }
-const errors: Record<string, string> = { ACCESS_DENIED: '코드와 참여권을 확인하거나 선생님께 문의해 주세요.', CLASS_UNAVAILABLE: '입장이 마감되었거나 정원이 찼어요.', STUDENT_CLASS_MISMATCH: '학년·반·번호가 참여권 정보와 일치하지 않아요.', REVISION_CONFLICT: '다른 화면에서 내용이 변경되었어요. 기록을 새로 불러와 주세요.', MINIMUM_ANSWERS: '세 번 이상 답한 뒤 마칠 수 있어요.', RATE_LIMIT: '잠시 기다린 뒤 다시 시도해 주세요.', SESSION_NOT_FOUND: '체험 기록이 초기화되었어요. 새로 체험해 주세요.', ADMISSION_ALREADY_ISSUED: '이미 참여권을 발급한 번호예요.', LIVE_INTERVIEW_NOT_ENABLED: '아직 실제 학생용 AI 인터뷰를 열지 않았습니다.', FIREBASE_NOT_CONFIGURED: 'Firebase 프로젝트 연결 설정이 필요합니다.', APPCHECK_NOT_CONFIGURED: 'App Check 설정이 필요합니다.', NOT_AVAILABLE_IN_DEMO: '이 기능은 Firebase 연결 후 사용할 수 있습니다.' };
+const errors: Record<string, string> = { ACCESS_DENIED: '코드와 참여권을 확인하거나 선생님께 문의해 주세요.', CLASS_UNAVAILABLE: '입장이 마감되었거나 정원이 찼어요.', STUDENT_CLASS_MISMATCH: '학년·반·번호가 참여권 정보와 일치하지 않아요.', REVISION_CONFLICT: '다른 화면에서 내용이 변경되었어요. 기록을 새로 불러와 주세요.', MINIMUM_ANSWERS: '세 번 이상 답한 뒤 마칠 수 있어요.', RATE_LIMIT: '잠시 기다린 뒤 다시 시도해 주세요.', SESSION_NOT_FOUND: '체험 기록이 초기화되었어요. 새로 체험해 주세요.', ADMISSION_ALREADY_ISSUED: '이미 참여권을 발급한 번호예요.', LIVE_INTERVIEW_NOT_ENABLED: '아직 실제 학생용 AI 인터뷰를 열지 않았습니다.', FIREBASE_NOT_CONFIGURED: 'Firebase 프로젝트 연결 설정이 필요합니다.', APPCHECK_NOT_CONFIGURED: 'App Check 설정이 필요합니다.', ARTICLE_SUBMITTED: '이미 제출한 기사는 수정할 수 없어요.', ARTICLE_NOT_FOUND: '먼저 기사 초안을 만들어 주세요.', NOT_AVAILABLE_IN_DEMO: '이번 프리뷰에서는 제공하지 않는 기능입니다.' };
 export function errorText(error: unknown) { const message = error instanceof Error ? error.message : ''; return Object.entries(errors).find(([key]) => message.includes(key))?.[1] || '처리하지 못했어요. 연결과 입력을 확인하고 다시 시도해 주세요.'; }
