@@ -1,3 +1,4 @@
+import { aiSettingsSchema, AI_MODELS } from '../../shared/ai-settings.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineBoolean, defineSecret } from 'firebase-functions/params';
 import { getFirestore, type Transaction } from 'firebase-admin/firestore';
@@ -67,11 +68,11 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
     if (kind==='article' && s.status!=='INTERVIEW_COMPLETED') fail('WRONG_STATE');
     if (s.aiLease && s.aiLease.expiresAt>Date.now()) fail('AI_REQUEST_PENDING');
     if ((old.data()?.attempts || 0)>=3) fail('AI_RETRY_LIMIT');
-    const input = { kind, career:s.career, futureYear:s.settings.futureYear, questionLimit:s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
+    const input = { ai:s.settings.ai, grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career, futureYear:s.settings.futureYear, questionLimit:s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
     const request = buildAiRequest(input);
     // UTF-8 byte count is a conservative input-token reservation for this fixed text model.
     const inputBound = Buffer.byteLength(JSON.stringify(request),'utf8') + 1024;
-    const reserveMicros = Math.ceil(inputBound*0.4 + request.max_output_tokens*1.6);
+    const reserveMicros = Math.ceil(inputBound*AI_MODELS[request.model].input + request.max_output_tokens*AI_MODELS[request.model].output);
     const day = new Date().toISOString().slice(0,10);
     const qr = ref(`liveBudget/${day}`), sq = ref(`liveSessionBudget/${sid}`);
     const [q,t] = await Promise.all([tx.get(qr),tx.get(sq)]);
@@ -100,7 +101,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
         const article: Article={sessionId:sid,original,edited:{...original},submitted:null,revision:0,updatedAt:Date.now(),submittedAt:null,generator:'openai'};
         tx.create(ar,article);tx.update(sr,{aiLease:null,articleState:'editing'});
       }
-      tx.update(job,{status:'done',usage:result.usage,durationMs:Date.now()-started});
+      tx.update(job,{status:'done',model:result.model,promptVersion:'teacher-settings-v1',usage:result.usage,durationMs:Date.now()-started});
     });
   } catch(error) {
     const code = safeAiError(error);
@@ -126,8 +127,9 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
       return db().runTransaction(async tx=>{const prior=(await tx.get(op)).data();if(prior){if(prior.fingerprint!==fingerprint)fail('IDEMPOTENCY_CONFLICT');return prior.result;}const result={classRecord:c,code};tx.create(cRef,c);tx.create(ref(`liveCodes/${hash(code)}`),{classId:c.id});tx.create(ref(`liveClasses/${c.id}/private/entry`),{code});tx.create(op,{fingerprint,result});return result;});
     }
     if(method==='listClasses') {await requireTeacher(uid);const q=await db().collection('liveClasses').where('teacherUid','==',uid).limit(100).get();return {classes:q.docs.map(d=>d.data()).filter(c=>c.retainUntil>Date.now()).sort((a,b)=>b.createdAt-a.createdAt)};}
-    if(method==='getClassEntry'||method==='setClassState'||method==='listSessions') {
+    if(method==='updateClassAi'||method==='getClassEntry'||method==='setClassState'||method==='listSessions') {
       await requireTeacher(uid);const c=await readClass(id.parse(p.classId),uid);
+      if(method==='updateClassAi'){const ai=aiSettingsSchema.parse(p.ai);await ref(`liveClasses/${c.id}`).update({ai});return {classRecord:{...c,ai}};}
       if(method==='getClassEntry') return {code:(await ref(`liveClasses/${c.id}/private/entry`).get()).data()?.code};
       if(method==='setClassState'){const status=z.enum(['OPEN','CLOSED']).parse(p.status);await ref(`liveClasses/${c.id}`).update({status});return {status};}
       const q=await db().collection('liveSessions').where('classId','==',c.id).limit(40).get();return {sessions:q.docs.map(d=>publicSession(d.data() as LiveSession))};

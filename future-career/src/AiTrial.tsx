@@ -1,3 +1,5 @@
+import { AiSettingsFields } from './AiSettings';
+import { defaultAiSettings } from '../shared/ai-settings';
 import { useRef, useState } from 'react';
 import { aiErrors } from '../shared/ai-errors';
 import { initializeApp } from 'firebase/app';
@@ -39,6 +41,7 @@ function explain(error: unknown) {
 }
 
 export function AiTrial() {
+  const [ai,setAi]=useState(defaultAiSettings);
   const [user, setUser] = useState<User | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const lock = useRef(false);
@@ -59,7 +62,7 @@ export function AiTrial() {
   async function request(kind: 'question' | 'article', transcript: Message[]) {
     const auth = await connect();
     if (!auth.currentUser) throw new Error('unauthenticated');
-    const result = await httpsCallable<unknown, Response>(getFunctions(auth.app, 'asia-northeast3'), 'aiPreview', { timeout: 65000 })({ requestId: crypto.randomUUID(), input: { kind, career: career.trim(), futureYear: 2040, questionLimit: 5, transcript, fictionalDataConfirmed: true } });
+    const result = await httpsCallable<unknown, Response>(getFunctions(auth.app, 'asia-northeast3'), 'aiPreview', { timeout: 65000 })({ requestId: crypto.randomUUID(), input: { ai, kind, career: career.trim(), futureYear: 2040, questionLimit: 5, transcript, fictionalDataConfirmed: true } });
     setUsage(result.data.usage); setLatency(result.data.durationMs ?? null);
     return result.data;
   }
@@ -80,7 +83,7 @@ export function AiTrial() {
         <button className="quiet" disabled={busy} onClick={() => run(async () => { await signOut(await connect()); setUser(null); setMessages([]); setArticle(null); setAnswer(''); setConfirmed(false); setUsage(null); })}>로그아웃</button>
       </div>}
       {user && <>
-        <label>상상할 미래 직업<input value={career} maxLength={80} disabled={busy || messages.length > 0} onChange={e => setCareer(e.target.value)} /></label>
+        <AiSettingsFields value={ai} onChange={setAi} disabled={busy || messages.length>0}/><label>상상할 미래 직업<input value={career} maxLength={80} disabled={busy || messages.length > 0} onChange={e => setCareer(e.target.value)} /></label>
         <label className="check"><input type="checkbox" checked={confirmed} disabled={busy || messages.length > 0} onChange={e => setConfirmed(e.target.checked)}/>성인 교사이며, 실제 학생 개인정보 없이 가상 내용만 입력합니다.</label>
         {!messages.length && <button disabled={busy || !confirmed || !career.trim()} onClick={() => run(() => question([]))}>AI 첫 질문 받기</button>}
         <div className="messages" aria-live="polite">{messages.map((m, i) => <article className={`bubble ${m.role}`} key={i}><small>{m.role === 'reporter' ? 'AI 기자' : '가상 답변'}</small><p style={{ whiteSpace: 'pre-wrap' }}>{m.text}</p></article>)}</div>

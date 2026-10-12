@@ -1,3 +1,4 @@
+import { aiSettingsSchema } from '../shared/ai-settings';
 import { initializeApp } from 'firebase/app';
 import { getAuth, setPersistence, browserSessionPersistence, signInAnonymously, signInWithPopup, GoogleAuthProvider, signOut, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
@@ -107,8 +108,9 @@ function mock(method: string, p: Record<string, unknown>): unknown {
   if (method === 'previewSummary') return { submitted: [...articles.values()].filter(a => a.submitted).map(a => a.sessionId), editing: [...articles.keys()] };
   if (method === 'previewResume') { const session = [...sessions.values()].filter(s => !s.id.startsWith('sample-')).sort((a,b) => b.updatedAt-a.updatedAt)[0]; return { session: session || null }; }
 
-  const teacherOnly = ['createClass', 'listClasses', 'listSessions', 'issueAdmission', 'setClassState', 'issueRecovery', 'getClassEntry'];
+  const teacherOnly = ['updateClassAi','createClass', 'listClasses', 'listSessions', 'issueAdmission', 'setClassState', 'issueRecovery', 'getClassEntry'];
   if (teacherOnly.includes(method) && !demoTeacher) throw new Error('ACCESS_DENIED');
+  if (method === 'updateClassAi') { const c=classes.find(c=>c.id===p.classId); if(!c)throw new Error('CLASS_UNAVAILABLE');c.ai=aiSettingsSchema.parse(p.ai);return {classRecord:c}; }
   if (method === 'getClassEntry') { const code = [...codes].find(([,value]) => value === p.classId)?.[0]; if (!code) throw new Error('CLASS_UNAVAILABLE'); return { code }; }
   if (method === 'resolveClassEntry') { const c = classes.find(c => c.id === codes.get(String(p.code).trim().toUpperCase())); if (!c || c.status !== 'OPEN' || c.retainUntil <= Date.now()) throw new Error('CLASS_UNAVAILABLE'); return { classInfo: { id:c.id, title:c.title, grade:c.grade, classroom:c.classroom, maxStudents:c.maxStudents } }; }
   if (method === 'joinClassByQr') {

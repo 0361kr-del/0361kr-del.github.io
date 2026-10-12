@@ -24,3 +24,13 @@ test('valid structured question is parsed; key is only in authorization header',
 test('contact data rejected before any provider request',async()=>{const p=request();p.transcript[0].text='전화 010-1234-5678';let calls=0;await assert.rejects(()=>generateWithOpenAI(p,'test-only',(async()=>{calls++;return response({});}) as typeof fetch),/PERSONAL_DATA_DETECTED/);assert.equal(calls,0);});
 test('invalid key and rate limits fail safely without response body leaks or automatic retries',async()=>{for(const [status,code] of [[401,'AI_KEY_INVALID'],[429,'AI_RATE_LIMIT']] as const){let calls=0;await assert.rejects(()=>generateWithOpenAI(request(),'test-only',(async()=>{calls++;return new Response('sensitive-provider-error',{status});}) as typeof fetch),new RegExp(code));assert.equal(calls,1);}});
 test('unfounded article quotations and truncated output are rejected',async()=>{const p=request();p.kind='article';p.transcript=[{role:'student',text:'바다를 연구해요.'},{role:'student',text:'수영을 배웠어요.'},{role:'student',text:'동료와 해결했어요.'}];await assert.rejects(()=>generateWithOpenAI(p,'test-only',(async()=>response({title:'제목',subtitle:'부제',body:'가상 기사',quotes:['대상을 수상했습니다.']})) as typeof fetch),/AI_UNSUPPORTED_QUOTE/);await assert.rejects(()=>generateWithOpenAI(request(),'test-only',(async()=>response({},'incomplete')) as typeof fetch),/AI_INCOMPLETE/);});
+test('teacher configuration selects allowlisted model while retaining fixed safety and bounded output',()=>{
+ const configured={...request(),grade:6,objective:'환경과 직업',ai:{model:'gpt-5.4-mini-2026-03-17',tone:'차분한 기자',interviewInstructions:'환경 보호 경험을 물어봐 주세요.',articleInstructions:'사회 기여를 정리해 주세요.'}};
+ const body=buildAiRequest(configured);
+ assert.equal(body.model,configured.ai.model);assert.deepEqual(body.reasoning,{effort:'none'});
+ assert.ok(body.instructions.includes('환경 보호 경험'));assert.ok(body.instructions.includes('개인의 실제 이름'));assert.ok(body.instructions.includes('환경과 직업'));
+ assert.ok(!body.instructions.includes('사회 기여를 정리'));assert.equal(body.max_output_tokens,500);
+ assert.throws(()=>buildAiRequest({...configured,ai:{...configured.ai,model:'arbitrary-expensive-model'}}));
+ assert.throws(()=>buildAiRequest({...configured,ai:{...configured.ai,interviewInstructions:'x'.repeat(1001)}}));
+ assert.equal(buildAiRequest(request()).model,'gpt-4.1-mini-2025-04-14');
+});
