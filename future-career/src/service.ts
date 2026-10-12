@@ -106,8 +106,18 @@ function mock(method: string, p: Record<string, unknown>): unknown {
   if (method === 'previewSummary') return { submitted: [...articles.values()].filter(a => a.submitted).map(a => a.sessionId), editing: [...articles.keys()] };
   if (method === 'previewResume') { const session = [...sessions.values()].filter(s => !s.id.startsWith('sample-')).sort((a,b) => b.updatedAt-a.updatedAt)[0]; return { session: session || null }; }
 
-  const teacherOnly = ['createClass', 'listClasses', 'listSessions', 'issueAdmission', 'setClassState', 'issueRecovery'];
+  const teacherOnly = ['createClass', 'listClasses', 'listSessions', 'issueAdmission', 'setClassState', 'issueRecovery', 'getClassEntry'];
   if (teacherOnly.includes(method) && !demoTeacher) throw new Error('ACCESS_DENIED');
+  if (method === 'getClassEntry') { const code = [...codes].find(([,value]) => value === p.classId)?.[0]; if (!code) throw new Error('CLASS_UNAVAILABLE'); return { code }; }
+  if (method === 'resolveClassEntry') { const c = classes.find(c => c.id === codes.get(String(p.code).trim().toUpperCase())); if (!c || c.status !== 'OPEN' || c.retainUntil <= Date.now()) throw new Error('CLASS_UNAVAILABLE'); return { classInfo: { id:c.id, title:c.title, grade:c.grade, classroom:c.classroom, maxStudents:c.maxStudents } }; }
+  if (method === 'joinClassByQr') {
+    const c = classes.find(c => c.id === codes.get(String(p.code).trim().toUpperCase()));
+    if (!c || c.status !== 'OPEN' || c.retainUntil <= Date.now() || c.studentCount >= c.maxStudents) throw new Error('CLASS_UNAVAILABLE');
+    const student = studentInput.parse({ ...(p.student as object), grade:c.grade, classroom:c.classroom });
+    if (student.number > c.maxStudents) throw new Error('STUDENT_CLASS_MISMATCH');
+    if ([...sessions.values()].some(s => s.classId===c.id && s.student.number===student.number)) throw new Error('NUMBER_ALREADY_JOINED');
+    const session = startSession(crypto.randomUUID(),c,student,'demo-student',Date.now()); sessions.set(session.id,session); c.studentCount++; return { session };
+  }
   if (method === 'teacherStatus') return { active: demoTeacher };
   if (method === 'listClasses') return { classes: [...classes] };
   if (method === 'createClass') { const input = classInput.parse(p); const c: ClassRecord = { ...input, id: crypto.randomUUID(), teacherUid: 'demo-teacher', status: 'OPEN', studentCount: 0, createdAt: Date.now(), retainUntil: now + 90 * 86400000 }; const code = crypto.randomUUID().slice(0, 8).toUpperCase(); classes.push(c); codes.set(code, c.id); return { classRecord: c, code }; }
@@ -119,5 +129,5 @@ function mock(method: string, p: Record<string, unknown>): unknown {
   if (method === 'sendAnswer' || method === 'finishInterview') { const session = sessions.get(String(p.sessionId)); if (!session) throw new Error('SESSION_NOT_FOUND'); const { sessionId: ignored, ...answer } = p; const next = method === 'sendAnswer' ? appendAnswer(session, answer, 'demo-student', Date.now()) : finishSession(session, 'demo-student', Number(p.expectedRevision), Date.now()); sessions.set(next.id, next); return { session: next }; }
   throw new Error('NOT_AVAILABLE_IN_DEMO');
 }
-const errors: Record<string, string> = { ACCESS_DENIED: '코드와 참여권을 확인하거나 선생님께 문의해 주세요.', CLASS_UNAVAILABLE: '입장이 마감되었거나 정원이 찼어요.', STUDENT_CLASS_MISMATCH: '학년·반·번호가 참여권 정보와 일치하지 않아요.', REVISION_CONFLICT: '다른 화면에서 내용이 변경되었어요. 기록을 새로 불러와 주세요.', MINIMUM_ANSWERS: '세 번 이상 답한 뒤 마칠 수 있어요.', RATE_LIMIT: '잠시 기다린 뒤 다시 시도해 주세요.', SESSION_NOT_FOUND: '체험 기록이 초기화되었어요. 새로 체험해 주세요.', ADMISSION_ALREADY_ISSUED: '이미 참여권을 발급한 번호예요.', LIVE_INTERVIEW_NOT_ENABLED: '아직 실제 학생용 AI 인터뷰를 열지 않았습니다.', FIREBASE_NOT_CONFIGURED: 'Firebase 프로젝트 연결 설정이 필요합니다.', APPCHECK_NOT_CONFIGURED: 'App Check 설정이 필요합니다.', ARTICLE_SUBMITTED: '이미 제출한 기사는 수정할 수 없어요.', ARTICLE_NOT_FOUND: '먼저 기사 초안을 만들어 주세요.', NOT_AVAILABLE_IN_DEMO: '이번 프리뷰에서는 제공하지 않는 기능입니다.' };
+const errors: Record<string, string> = { ENTRY_NOT_CONFIGURED: '이전 방식으로 만든 학급입니다. 새 학급을 만들어 QR을 발급해 주세요.', SESSION_EXISTS: '이미 이 학급에 참여했어요. 처음 화면에서 이어서 하기를 눌러 주세요.', NUMBER_ALREADY_JOINED: '이미 입장한 번호예요. 본인 기록은 이어서 하기로 열고, 다른 학생 번호라면 선생님께 문의하세요.', ACCESS_DENIED: '코드와 참여권을 확인하거나 선생님께 문의해 주세요.', CLASS_UNAVAILABLE: '입장이 마감되었거나 정원이 찼어요.', STUDENT_CLASS_MISMATCH: '학년·반·번호가 참여권 정보와 일치하지 않아요.', REVISION_CONFLICT: '다른 화면에서 내용이 변경되었어요. 기록을 새로 불러와 주세요.', MINIMUM_ANSWERS: '세 번 이상 답한 뒤 마칠 수 있어요.', RATE_LIMIT: '잠시 기다린 뒤 다시 시도해 주세요.', SESSION_NOT_FOUND: '체험 기록이 초기화되었어요. 새로 체험해 주세요.', ADMISSION_ALREADY_ISSUED: '이미 참여권을 발급한 번호예요.', LIVE_INTERVIEW_NOT_ENABLED: '아직 실제 학생용 AI 인터뷰를 열지 않았습니다.', FIREBASE_NOT_CONFIGURED: 'Firebase 프로젝트 연결 설정이 필요합니다.', APPCHECK_NOT_CONFIGURED: 'App Check 설정이 필요합니다.', ARTICLE_SUBMITTED: '이미 제출한 기사는 수정할 수 없어요.', ARTICLE_NOT_FOUND: '먼저 기사 초안을 만들어 주세요.', NOT_AVAILABLE_IN_DEMO: '이번 프리뷰에서는 제공하지 않는 기능입니다.' };
 export function errorText(error: unknown) { const message = error instanceof Error ? error.message : ''; return Object.entries(errors).find(([key]) => message.includes(key))?.[1] || '처리하지 못했어요. 연결과 입력을 확인하고 다시 시도해 주세요.'; }

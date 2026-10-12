@@ -60,6 +60,15 @@ export const api = onCall({ region: 'asia-northeast3', enforceAppCheck: !emulato
     await limit(uid, 'all', 120);
     if (method === 'teacherStatus') { const t = (await ref(`teachers/${uid}`).get()).data(); return { active: t?.active === true }; }
     if (method === 'listClasses') { await teacher(uid); const q = await db.collection('classes').where('teacherUid', '==', uid).orderBy('createdAt', 'desc').limit(100).get(); return { classes: q.docs.map(d => d.data()).filter(c => c.retainUntil > Date.now() && c.status !== 'DELETING') }; }
+    if (method === 'getClassEntry') { const c = await ownedClass(id.parse(p.classId),uid); const entry = (await ref(`classes/${c.id}/private/entry`).get()).data(); if (!entry?.code) throw new HttpsError('failed-precondition','ENTRY_NOT_CONFIGURED'); return { code: entry.code }; }
+    if (method === 'resolveClassEntry') {
+      await limit(uid,'resolve-entry',10,900000);
+      const code = z.string().trim().toUpperCase().regex(/^[A-F0-9]{8}$/).parse(p.code);
+      const entry = (await ref(`classCodes/${hash(code)}`).get()).data(); if (!entry || entry.expiresAt <= Date.now()) return deny();
+      const c = (await ref(`classes/${entry.classId}`).get()).data() as ClassRecord | undefined;
+      if (!c || c.status !== 'OPEN' || c.retainUntil <= Date.now()) throw new HttpsError('failed-precondition','CLASS_UNAVAILABLE');
+      return { classInfo: { id:c.id,title:c.title,grade:c.grade,classroom:c.classroom,maxStudents:c.maxStudents } };
+    }
     if (method === 'getSession') return { session: await loadSession(id.parse(p.sessionId), uid) };
     if (method === 'resume') { const a = await ref(`studentAccess/${uid}/sessions/${id.parse(p.classId)}`).get(); return a.exists ? { session: await loadSession(a.data()!.sessionId, uid) } : deny(); }
     if (method === 'listSessions') { const c = await ownedClass(id.parse(p.classId), uid); const q = await db.collection('sessions').where('teacherUid', '==', uid).where('classId', '==', c.id).orderBy('updatedAt', 'desc').limit(40).get(); const sessions = await Promise.all(q.docs.filter(d => d.data().retainUntil > Date.now()).map(d => loadSession(d.id, uid))); return { sessions }; }
@@ -79,7 +88,7 @@ export const api = onCall({ region: 'asia-northeast3', enforceAppCheck: !emulato
       const code = randomBytes(5).toString('hex').slice(0, 8).toUpperCase();
       const c: ClassRecord = { ...input, id: classId, teacherUid: uid, status: 'OPEN', studentCount: 0, createdAt: Date.now(), retainUntil: Date.now() + 90 * 86400000 };
       const result = { classRecord: c, code };
-      return db.runTransaction(async tx => { const old = await tx.get(opRef); if (old.exists) { if (old.data()!.requestHash !== requestHash) throw new HttpsError('aborted', 'IDEMPOTENCY_CONFLICT'); return old.data()!.result; } tx.create(ref(`classes/${classId}`), c); tx.create(ref(`classCodes/${hash(code)}`), { classId, expiresAt: c.retainUntil }); tx.create(opRef, { requestHash, result }); return result; });
+      return db.runTransaction(async tx => { const old = await tx.get(opRef); if (old.exists) { if (old.data()!.requestHash !== requestHash) throw new HttpsError('aborted', 'IDEMPOTENCY_CONFLICT'); return old.data()!.result; } tx.create(ref(`classes/${classId}`), c); tx.create(ref(`classes/${classId}/private/entry`), { code }); tx.create(ref(`classCodes/${hash(code)}`), { classId, expiresAt: c.retainUntil }); tx.create(opRef, { requestHash, result }); return result; });
     }
     if (method === 'setClassState') {
       const c = await ownedClass(id.parse(p.classId), uid); const status = z.enum(['OPEN', 'CLOSED']).parse(p.status);
@@ -93,6 +102,27 @@ export const api = onCall({ region: 'asia-northeast3', enforceAppCheck: !emulato
       const token = randomToken(); const tokenRef = ref(`admissions/${hash(token)}`); const memberRef = ref(`classes/${c.id}/members/${number}`);
       const result = { token, number };
       return db.runTransaction(async tx => { const [old, member] = await Promise.all([tx.get(opRef), tx.get(memberRef)]); if (old.exists) { if (old.data()!.requestHash !== requestHash) throw new HttpsError('aborted', 'IDEMPOTENCY_CONFLICT'); return old.data()!.result; } if (member.exists) throw new HttpsError('already-exists', 'ADMISSION_ALREADY_ISSUED'); tx.create(memberRef, { number, sessionId: null }); tx.create(tokenRef, { classId: c.id, number, consumedBy: null, expiresAt: c.retainUntil }); tx.create(opRef, { requestHash, result }); return result; });
+    }
+    // Shared classroom QR grants enrollment only, never access to another student's record.
+    if (method === 'joinClassByQr') {
+      requireFixture(); await limit(uid,'join',5,900000);
+      const input = z.object({ code:z.string().trim().toUpperCase().regex(/^[A-F0-9]{8}$/), student:studentInput.omit({grade:true,classroom:true}) }).strict().parse(p);
+      const sessionId = db.collection('sessions').doc().id;
+      return db.runTransaction(async tx => {
+        const [old,entrySnap] = await Promise.all([tx.get(opRef),tx.get(ref(`classCodes/${hash(input.code)}`))]);
+        if(old.exists) { if(old.data()!.requestHash!==requestHash) throw new HttpsError('aborted','IDEMPOTENCY_CONFLICT'); return old.data()!.result; }
+        const entry=entrySnap.data(); if(!entry || entry.expiresAt<=Date.now()) return deny();
+        const cRef=ref(`classes/${entry.classId}`);const c=(await tx.get(cRef)).data() as ClassRecord | undefined;
+        if(!c || c.status!=='OPEN' || c.retainUntil<=Date.now() || c.studentCount>=c.maxStudents) throw new HttpsError('failed-precondition','CLASS_UNAVAILABLE');
+        if(input.student.number>c.maxStudents) throw new HttpsError('invalid-argument','STUDENT_CLASS_MISMATCH');
+        const pointer=ref(`studentAccess/${uid}/sessions/${c.id}`), member=ref(`classes/${c.id}/members/${input.student.number}`);
+        const [prior,membership]=await Promise.all([tx.get(pointer),tx.get(member)]);
+        if(prior.exists) throw new HttpsError('already-exists','SESSION_EXISTS');
+        if(membership.exists) throw new HttpsError('already-exists','NUMBER_ALREADY_JOINED');
+        const student=studentInput.parse({...input.student,grade:c.grade,classroom:c.classroom});
+        const session=startSession(sessionId,c,student,uid,Date.now()),result={session};
+        writeSession(tx,session);tx.update(cRef,{studentCount:c.studentCount+1});tx.create(member,{number:student.number,sessionId});tx.create(pointer,{sessionId});tx.create(opRef,{requestHash,sessionId,result});return result;
+      });
     }
     if (method === 'joinClass') {
       requireFixture(); await limit(uid, 'join', 5, 900000);
