@@ -10,7 +10,8 @@
 | Firestore 규칙 테스트 | 8개 작성, 실행 환경의 Java libjli.so 오류로 미실행 |
 | Functions Emulator 통합·동시성·복구 테스트 | 미실행 |
 | 브라우저 E2E·태블릿·115명 부하 테스트 | 미실행 |
-| 실제 Firebase Authentication·App Check | 프로젝트 연결 대기 |
+| Firebase 콘솔 설정 확인 | 웹 앱·Google 및 익명 제공자·서울 Standard DB·기본 거부 규칙 확인 |
+| 실제 로그인 E2E·App Check | 미검증·App Check 미설정 |
 | 실제 OpenAI 품질·비용·개인정보 테스트 | 미구현·비활성화 |
 
 실행 명령: `npm run build`, `npm run build:functions`, `npm test`, `npm run test:rules`.
@@ -21,4 +22,4 @@
 
 원격 브랜치: `codex/future-career-stage1`. 변경은 `future-career/`와 해당 경로용 CI에만 추가됩니다. 기존 게임 파일 수정·main 병합·운영 배포 없음.
 
-다음 작업: Firebase 연결과 신규 개발 프로젝트 생성 → 교사 UID 승인 → Emulator 통합시험 → 아동 개인정보 처리 조건 확인 → 비동기 OpenAI 인터뷰와 비용 예약 → 기사 생성·편집·제출.
+다음 작업: App Check·서버 비밀 및 배포 준비 → 교사 UID 승인 → Emulator 통합시험 → 아동 개인정보 처리 조건 확인 → 비동기 OpenAI 인터뷰와 비용 예약 → 기사 생성·편집·제출.

@@ -29,8 +29,8 @@ npm run test:rules
 
 ## Firebase 연결
 
-1. 새 전용 개발 프로젝트를 생성하고 프로젝트 ID를 확정합니다. 아직 `.firebaserc`나 실제 프로젝트가 지정되지 않았습니다.
-2. Authentication의 Google·익명 인증, Firestore, App Check를 설정합니다. Functions는 Blaze 요금제와 비용 검토가 필요합니다.
+1. 전용 프로젝트 `future-career-interview` 및 웹 앱 등록을 완료했습니다. `.firebaserc`에 dev 별칭을 지정했습니다. 구성 확인 기록은 `FIREBASE-SETUP.md`에 있습니다.
+2. Google·익명 인증과 서울 리전 Standard Firestore 생성은 완료했습니다. App Check와 실제 로그인 검증은 남아 있습니다. Functions는 Blaze 요금제와 비용 검토가 필요합니다.
 3. `.env.example`을 `.env.local`로 복사하고 Firebase 웹 앱의 공개 설정을 입력합니다. OpenAI 키는 VITE 변수에 절대 넣지 않습니다.
 4. 교사는 로그인 후 확인한 UID와 검증된 Google 이메일을 운영자가 대조하여 `teachers/{uid}`에 `active:true`를 등록합니다. 사용자 입력 이메일만으로 승인하지 않습니다. 관리자 이메일은 공개 소스에 하드코딩하지 않습니다.
 5. `ACCESS_CODE_PEPPER`는 서버 Secret Manager에 등록합니다. 이후 생성되는 수업 코드·참여권의 해시에 사용되므로 임의로 교체하지 않습니다.
