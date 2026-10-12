@@ -61,6 +61,25 @@ test('class QR, ownership, concurrent generation, immutable original, submission
  assert.equal((await call('replacement','redeemRecovery',{code:recovery})).session.id,s.id);
  await call('teacher','setClassState',{classId:c.id,status:'CLOSED'});
  await assert.rejects(()=>call('other','joinClassByQr',{code,student:{...student,number:2}}));
+ const unrelated=(await call('teacher','createClass',{title:'유지할 수업',classroom:'4',objective:'진로'})).classRecord;
+ await assert.rejects(()=>call('intruder','deleteClass',{classId:c.id,confirm:true}));
+ await assert.rejects(()=>call('teacher','deleteClass',{classId:c.id,confirm:false}));
+ // Simulate an interrupted delete after the access gate has closed, then resume.
+ await db.doc(`liveClasses/${c.id}`).update({deleting:true});
+ await assert.rejects(()=>call('replacement','getSession',{sessionId:s.id}));
+ await call('teacher','deleteClass',{classId:c.id,confirm:true});
+ assert.equal((await db.doc(`liveClasses/${c.id}`).get()).exists,false);
+ assert.equal((await db.doc(`liveClasses/${unrelated.id}`).get()).exists,true);
+ for(const collection of ['liveSessions','liveCodes'])assert.equal((await db.collection(collection).where('classId','==',c.id).get()).size,0);
+ for(const path of [`liveArticles/${s.id}`,`liveSessionBudget/${s.id}`,`liveAccess/replacement/classes/${c.id}`,`liveAccess/student-two/classes/${c.id}`])assert.equal((await db.doc(path).get()).exists,false);
+ assert.equal((await db.collection('liveRecovery').where('sessionId','==',s.id).get()).size,0);
+ assert.equal((await db.collection('liveAiJobs').orderBy('__name__').startAt(s.id+'-').endAt(s.id+'-\uf8ff').get()).size,0);
+ for(const [field,value] of [['result.session.id',s.id],['result.article.sessionId',s.id],['result.classRecord.id',c.id]])assert.equal((await db.collection('liveOps').where(field,'==',value).get()).size,0);
+ assert.equal((await db.doc(`liveClasses/${c.id}/private/entry`).get()).exists,false);
+ await assert.rejects(()=>call('replacement','getSession',{sessionId:s.id}));
+ await assert.rejects(()=>call('student','resolveClassEntry',{code}));
+ assert.equal((await call('teacher','deleteClass',{classId:c.id,confirm:true})).deleted,true);
+
 });
 test('daily budget refuses a provider call before any paid request',async()=>{
  const {code}=await call('teacher','createClass',{title:'예산 시험',classroom:'3',objective:'가상 시험'});

@@ -8,7 +8,7 @@ export const answerInput = z.object({ text: text(1000), questionId: z.string().r
 export const requestIdSchema = z.uuid();
 export type ClassInput = z.infer<typeof classInput>;
 export type StudentInput = z.infer<typeof studentInput>;
-export type ClassRecord = ClassInput & { id: string; teacherUid: string; status: 'OPEN' | 'CLOSED'; studentCount: number; createdAt: number; retainUntil: number };
+export type ClassRecord = ClassInput & { id: string; teacherUid: string; status: 'OPEN' | 'CLOSED'; studentCount: number; deleting?: boolean; createdAt: number; retainUntil: number };
 export type Message = { id: string; seq: number; role: 'reporter' | 'student'; text: string; createdAt: number };
 export type Session = { id: string; classId: string; teacherUid: string; ownerUid: string; career: string; student: StudentInput; settings: ClassInput; status: 'INTERVIEWING' | 'INTERVIEW_COMPLETED'; answerCount: number; revision: number; currentQuestionId: string; ownershipEpoch: number; retainUntil: number; updatedAt: number; messages: Message[] };
 export class DomainError extends Error { constructor(public code: string) { super(code); } }

@@ -108,8 +108,9 @@ function mock(method: string, p: Record<string, unknown>): unknown {
   if (method === 'previewSummary') return { submitted: [...articles.values()].filter(a => a.submitted).map(a => a.sessionId), editing: [...articles.keys()] };
   if (method === 'previewResume') { const session = [...sessions.values()].filter(s => !s.id.startsWith('sample-')).sort((a,b) => b.updatedAt-a.updatedAt)[0]; return { session: session || null }; }
 
-  const teacherOnly = ['updateClassAi','createClass', 'listClasses', 'listSessions', 'issueAdmission', 'setClassState', 'issueRecovery', 'getClassEntry'];
+  const teacherOnly = ['deleteClass','updateClassAi','createClass', 'listClasses', 'listSessions', 'issueAdmission', 'setClassState', 'issueRecovery', 'getClassEntry'];
   if (teacherOnly.includes(method) && !demoTeacher) throw new Error('ACCESS_DENIED');
+  if (method === 'deleteClass') { if(p.confirm!==true)throw new Error('ACCESS_DENIED'); const i=classes.findIndex(c=>c.id===p.classId);if(i>=0)classes.splice(i,1);for(const [sid,s] of sessions)if(s.classId===p.classId){sessions.delete(sid);articles.delete(sid);}for(const [code,cid] of codes)if(cid===p.classId)codes.delete(code);for(const [token,a] of admissions)if(a.classId===p.classId)admissions.delete(token);return {deleted:true}; }
   if (method === 'updateClassAi') { const c=classes.find(c=>c.id===p.classId); if(!c)throw new Error('CLASS_UNAVAILABLE');c.ai=aiSettingsSchema.parse(p.ai);return {classRecord:c}; }
   if (method === 'getClassEntry') { const code = [...codes].find(([,value]) => value === p.classId)?.[0]; if (!code) throw new Error('CLASS_UNAVAILABLE'); return { code }; }
   if (method === 'resolveClassEntry') { const c = classes.find(c => c.id === codes.get(String(p.code).trim().toUpperCase())); if (!c || c.status !== 'OPEN' || c.retainUntil <= Date.now()) throw new Error('CLASS_UNAVAILABLE'); return { classInfo: { id:c.id, title:c.title, grade:c.grade, classroom:c.classroom, maxStudents:c.maxStudents } }; }

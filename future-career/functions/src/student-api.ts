@@ -1,7 +1,7 @@
 import { aiSettingsSchema, AI_MODELS } from '../../shared/ai-settings.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineBoolean, defineSecret } from 'firebase-functions/params';
-import { getFirestore, type Transaction } from 'firebase-admin/firestore';
+import { getFirestore, type Transaction, type Query } from 'firebase-admin/firestore';
 import { randomBytes, createHmac, createHash } from 'node:crypto';
 import { z } from 'zod';
 import { classInput, studentInput, startSession, finishSession, DomainError, type ClassRecord } from '../../shared/domain.js';
@@ -23,7 +23,7 @@ async function activeTeacher(uid: string) { return (await ref(`teachers/${uid}`)
 async function requireTeacher(uid: string) { if (!await activeTeacher(uid)) denied(); }
 async function readClass(classId: string, uid?: string) {
   const c = (await ref(`liveClasses/${id.parse(classId)}`).get()).data() as ClassRecord | undefined;
-  if (!c || c.retainUntil <= Date.now()) denied();
+  if (!c || c.deleting || c.retainUntil <= Date.now()) denied();
   if (uid && c.teacherUid !== uid) denied();
   return c;
 }
@@ -47,11 +47,39 @@ async function txOwned(tx: Transaction, sid: string, uid: string) {
   const sr = ref(`liveSessions/${sid}`), s = (await tx.get(sr)).data() as LiveSession | undefined;
   if (!s || s.ownerUid !== uid || s.retainUntil <= Date.now()) denied();
   const c = (await tx.get(ref(`liveClasses/${s.classId}`))).data() as ClassRecord | undefined;
-  if (!c || c.retainUntil <= Date.now()) denied();
+  if (!c || c.deleting || c.retainUntil <= Date.now()) denied();
   if (c.status !== 'OPEN') fail('CLASS_UNAVAILABLE');
   return { sr, s, c };
 }
 function publicSession(s: LiveSession) { const { aiLease: _lease, ...safe } = s; return safe; }
+
+// Close access first; keep each session until all its copies are erased so retries resume safely.
+async function eraseQuery(query: Query) {
+  for (;;) { const page=await query.limit(200).get(); if(page.empty)return;
+    const batch=db().batch();for(const doc of page.docs)batch.delete(doc.ref);await batch.commit();
+  }
+}
+async function deleteClassData(classId: string, uid: string) {
+  await requireTeacher(uid);const cr=ref(`liveClasses/${classId}`);
+  await db().runTransaction(async tx=>{const c=(await tx.get(cr)).data();if(!c)return;if(c.teacherUid!==uid)denied();tx.update(cr,{deleting:true,status:'CLOSED'});});
+  // Missing classes cannot have been joined; repeated completed deletion is harmless.
+  if(!(await cr.get()).exists)return {deleted:true};
+  const sessions=await db().collection('liveSessions').where('classId','==',classId).get();
+  for(let i=0;i<sessions.docs.length;i+=4)await Promise.all(sessions.docs.slice(i,i+4).map(async doc=>{
+    const s=doc.data() as LiveSession;
+    await eraseQuery(db().collection('liveOps').where('result.session.id','==',s.id));
+    await eraseQuery(db().collection('liveOps').where('result.article.sessionId','==',s.id));
+    await eraseQuery(db().collection('liveRecovery').where('sessionId','==',s.id));
+    await eraseQuery(db().collection('liveAiJobs').orderBy('__name__').startAt(s.id+'-').endAt(s.id+'-\uf8ff'));
+    const batch=db().batch();batch.delete(ref(`liveArticles/${s.id}`));batch.delete(ref(`liveSessionBudget/${s.id}`));
+    batch.delete(ref(`liveAccess/${s.ownerUid}/classes/${classId}`));await batch.commit();
+    await doc.ref.delete();
+  }));
+  await eraseQuery(db().collection('liveOps').where('result.classRecord.id','==',classId));
+  await eraseQuery(db().collection('liveCodes').where('classId','==',classId));
+  await db().recursiveDelete(cr);
+  return {deleted:true};
+}
 
 async function generate(sid: string, uid: string, kind: 'question' | 'article') {
   const initial = await session(sid, uid, true);
@@ -118,6 +146,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
     if(Buffer.byteLength(JSON.stringify(request.data))>32768) fail('INVALID_INPUT');
     const {method,payload:p,requestId}=z.object({method:z.string(),payload:z.record(z.string(),z.unknown()),requestId:z.uuid()}).strict().parse(request.data);
     await rate(uid);
+    if(method==='deleteClass'){if(p.confirm!==true)fail('INVALID_INPUT');return await deleteClassData(id.parse(p.classId),uid);}
     if(method==='teacherStatus') return {active:await activeTeacher(uid)};
     if(method==='createClass') {
       await requireTeacher(uid);const input=classInput.parse(p);
@@ -147,7 +176,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
         const cr=ref(`liveClasses/${c.id}`),ptr=ref(`liveAccess/${uid}/classes/${c.id}`),member=ref(`liveClasses/${c.id}/members/${student.number}`);
         const [fresh,prior,occupied]=await Promise.all([tx.get(cr),tx.get(ptr),tx.get(member)]);
         if(prior.exists)return {sid:prior.data()!.sessionId};
-        const current=fresh.data() as ClassRecord;if(!current||current.status!=='OPEN'||current.retainUntil<=Date.now()||current.studentCount>=current.maxStudents)fail('CLASS_UNAVAILABLE');
+        const current=fresh.data() as ClassRecord;if(!current||current.deleting||current.status!=='OPEN'||current.retainUntil<=Date.now()||current.studentCount>=current.maxStudents)fail('CLASS_UNAVAILABLE');
         if(occupied.exists)fail('NUMBER_ALREADY_JOINED');
         const s:LiveSession={...startSession(sid,current,student,uid,Date.now()),messages:[],currentQuestionId:'',awaitingQuestion:true};
         tx.create(ref(`liveSessions/${sid}`),s);tx.create(ptr,{sessionId:sid});tx.create(member,{sessionId:sid});tx.update(cr,{studentCount:current.studentCount+1});return {sid};
@@ -163,7 +192,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
         if(!s||s.retainUntil<=Date.now())denied();
         if(r.consumedBy){if(r.consumedBy===uid&&s.ownerUid===uid)return s.id;denied();}
         if(s.ownershipEpoch!==r.epoch)denied();if(s.aiLease&&s.aiLease.expiresAt>Date.now())fail('AI_REQUEST_PENDING');
-        const c=(await tx.get(ref(`liveClasses/${s.classId}`))).data();if(!c||c.retainUntil<=Date.now())denied();
+        const c=(await tx.get(ref(`liveClasses/${s.classId}`))).data();if(!c||c.deleting||c.retainUntil<=Date.now())denied();
         const ptr=ref(`liveAccess/${uid}/classes/${s.classId}`),prior=(await tx.get(ptr)).data();if(prior&&prior.sessionId!==s.id)fail('SESSION_EXISTS');
         tx.update(sr,{ownerUid:uid,ownershipEpoch:s.ownershipEpoch+1,updatedAt:Date.now()});
         tx.update(rr,{consumedBy:uid});tx.set(ptr,{sessionId:s.id});
@@ -174,7 +203,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
     const sid=id.parse(p.sessionId);const s=await session(sid,uid);
     if(method==='issueRecovery') {
       if(s.teacherUid!==uid)denied();await requireTeacher(uid);
-      const code=randomBytes(24).toString('base64url');await ref(`liveRecovery/${hash(code)}`).create({sessionId:s.id,epoch:s.ownershipEpoch,expiresAt:Date.now()+600000,consumedBy:null});return {code};
+      const code=randomBytes(24).toString('base64url');await db().runTransaction(async tx=>{const current=(await tx.get(ref(`liveSessions/${s.id}`))).data();const c=(await tx.get(ref(`liveClasses/${s.classId}`))).data();if(!current||!c||c.deleting)denied();tx.create(ref(`liveRecovery/${hash(code)}`),{sessionId:s.id,epoch:current.ownershipEpoch,expiresAt:Date.now()+600000,consumedBy:null});});return {code};
     }
     if(method==='getSession')return {session:publicSession(s)};
     if(method==='getArticle')return {article:(await ref(`liveArticles/${sid}`).get()).data()||null};
