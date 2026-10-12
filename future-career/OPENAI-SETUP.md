@@ -1,5 +1,16 @@
 # OpenAI 연결 준비 및 남은 단계
 
+## 2026-10-13 교사 시험 화면 추가
+
+- 사용자 제공 CLI 출력으로 `aiPreview` 서울 배포 성공 확인. 사용자가 reCAPTCHA Enterprise App Check 등록 완료를 보고했습니다. 실제 호출은 아직 미검증입니다.
+- `/?ai-test`에서 별도 Firebase Google 로그인, UID 확인, 가상 인터뷰 5답변, 3답변 이후 기사 생성 가능. 기존 demo 화면은 유지합니다.
+- 공개 사이트키를 `.env.example`에 반영했습니다. Firebase Hosting 배포 전 `.env.example`을 `.env.local`로 복사하고 `npm run build`를 실행합니다.
+- 처음 Google 로그인 후 관리자 Cloud Shell에서 `node functions/approve-teacher.mjs`를 실행하면 검증된 Google 계정 `0361kr@gmail.com`만 승인합니다. 존재하지 않는 계정을 생성하거나 임의 이메일을 승인하지 않습니다.
+- 프론트엔드 타입 검사 및 Vite 빌드 통과. 승인 스크립트 구문 검사 통과. 브라우저 로그인, App Check 토큰, 실제 AI 호출, Hosting 배포는 사용자 환경에서 확인이 필요합니다.
+- 시험 화면의 대화는 브라우저 메모리에만 유지됩니다. 서버는 기존 구현대로 요청·결과와 호출량을 저장합니다. 학생용 실제 AI 기능과 자동 저장 통합은 미완료입니다.
+
+아래는 서버 배포 이전 준비 기록입니다.
+
 2026-10-13 KST. **실제 AI 연결 완료가 아닙니다.** 운영 키, App Check, 승인 교사 UID 및 Firebase 배포가 아직 준비되지 않았습니다. 현재 공개된 소유자 전용 프리뷰는 계속 연습용 질문·기사 틀을 사용합니다.
 
 ## 구현
