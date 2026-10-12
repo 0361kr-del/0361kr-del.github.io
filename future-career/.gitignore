@@ -5,5 +5,4 @@ functions/lib/
 !.env.example
 *.log
 .firebase/
-.firebaserc
 coverage/
