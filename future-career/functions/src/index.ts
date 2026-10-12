@@ -184,3 +184,5 @@ export const api = onCall({ region: 'asia-northeast3', enforceAppCheck: !emulato
     throw new HttpsError('internal', 'SAFE_INTERNAL_ERROR');
   }
 });
+
+export { aiPreview } from './ai-preview.js';
