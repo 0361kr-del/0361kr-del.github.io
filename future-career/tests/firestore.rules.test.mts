@@ -9,6 +9,12 @@ test('student reads own session and messages', async () => { const db = env.auth
 test('teacher reads own student', async () => { await assertSucceeds(getDoc(doc(env.authenticatedContext('t1').firestore(), 'sessions/s1/private/student'))); });
 test('other students and teachers cannot read', async () => { for (const uid of ['u2', 't2', 'disabled']) await assertFails(getDoc(doc(env.authenticatedContext(uid).firestore(), 'sessions/s1'))); });
 test('unauthenticated reads denied', async () => { await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'sessions/s1'))); });
+test('live collections are accessible only through server callables', async () => {
+  for (const uid of ['u1','t1']) for (const path of ['liveSessions/s1','liveArticles/s1','liveCodes/secret','liveBudget/day','liveRecovery/token','liveClasses/c1']) {
+    const db=env.authenticatedContext(uid).firestore();
+    await assertFails(getDoc(doc(db,path)));await assertFails(setDoc(doc(db,path),{ownerUid:uid}));
+  }
+});
 test('all direct writes denied including own student and teacher', async () => { for (const uid of ['u1', 't1']) await assertFails(setDoc(doc(env.authenticatedContext(uid).firestore(), 'sessions/s1'), { ownerUid: uid })); });
 test('collection-wide session enumeration denied', async () => { await assertFails(getDocs(collection(env.authenticatedContext('t1').firestore(), 'sessions'))); });
 test('codes and expired sessions denied', async () => { const db = env.authenticatedContext('u1').firestore(); await assertFails(getDoc(doc(db, 'classCodes/secret'))); await assertFails(getDoc(doc(db, 'sessions/expired'))); });

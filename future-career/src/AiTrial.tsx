@@ -7,7 +7,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 
 type Message = { role: 'reporter' | 'student'; text: string };
 type Article = { title: string; subtitle: string; body: string; quotes: string[] };
-type Response = { kind: 'question' | 'article'; result: { acknowledgement: string; question: string } | Article; usage: { inputTokens: number; outputTokens: number } | null };
+type Response = { durationMs?: number; kind: 'question' | 'article'; result: { acknowledgement: string; question: string } | Article; usage: { inputTokens: number; outputTokens: number } | null };
 let connection: Promise<ReturnType<typeof getAuth>> | undefined;
 function connect() {
   if (!connection) connection = (async () => {
@@ -48,6 +48,7 @@ export function AiTrial() {
   const [answer, setAnswer] = useState('');
   const [article, setArticle] = useState<Article | null>(null);
   const [usage, setUsage] = useState<Response['usage']>(null);
+  const [latency,setLatency]=useState<number|null>(null);
   const answers = messages.filter(m => m.role === 'student').length;
   async function run(action: () => Promise<void>) {
     if (lock.current) return;
@@ -59,7 +60,7 @@ export function AiTrial() {
     const auth = await connect();
     if (!auth.currentUser) throw new Error('unauthenticated');
     const result = await httpsCallable<unknown, Response>(getFunctions(auth.app, 'asia-northeast3'), 'aiPreview', { timeout: 65000 })({ requestId: crypto.randomUUID(), input: { kind, career: career.trim(), futureYear: 2040, questionLimit: 5, transcript, fictionalDataConfirmed: true } });
-    setUsage(result.data.usage);
+    setUsage(result.data.usage); setLatency(result.data.durationMs ?? null);
     return result.data;
   }
   async function question(transcript: Message[]) {
@@ -89,7 +90,7 @@ export function AiTrial() {
         </form>}
         {answers >= 3 && !article && <button className="secondary" disabled={busy || !!answer.trim()} onClick={() => run(async () => { const data = await request('article', messages); if (!('title' in data.result)) throw new Error('INVALID_RESPONSE'); setArticle(data.result); })}>이 대화로 AI 기사 생성</button>}
         {article && <article className="paper"><p className="eyebrow">미래 직업 가상 인터뷰 · AI 초안</p><h2>{article.title}</h2><h3>{article.subtitle}</h3><p style={{ whiteSpace: 'pre-wrap' }}>{article.body}</p>{article.quotes.map((q, i) => <blockquote key={i}>{q}</blockquote>)}</article>}
-        {usage && <p className="muted">직전 AI 요청: 입력 {usage.inputTokens} / 출력 {usage.outputTokens} 토큰</p>}
+        {usage && <p className="muted">직전 AI 요청: 입력 {usage.inputTokens} / 출력 {usage.outputTokens} 토큰{latency!==null && ` · OpenAI 응답 ${(latency/1000).toFixed(1)}초`}</p>}
         <p role="status">{busy ? '처리 중입니다. 잠시 기다려 주세요…' : ''}</p>
         {!!messages.length && <button className="quiet" disabled={busy} onClick={() => { if (confirm('현재 시험 대화와 기사 화면을 비울까요?')) { setMessages([]); setArticle(null); setAnswer(''); setUsage(null); } }}>새 가상 인터뷰</button>}
       </>}

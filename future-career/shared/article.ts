@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { DomainError, type Session } from './domain.js';
 export const articleInput = z.object({ title: z.string().trim().min(1).max(120), subtitle: z.string().trim().max(200), body: z.string().trim().min(1).max(12000) }).strict();
 export type ArticleText = z.infer<typeof articleInput>;
-export type Article = { sessionId: string; original: ArticleText; edited: ArticleText; submitted: ArticleText | null; revision: number; updatedAt: number; submittedAt: number | null; generator: 'template-preview' };
+export type Article = { sessionId: string; original: ArticleText; edited: ArticleText; submitted: ArticleText | null; revision: number; updatedAt: number; submittedAt: number | null; generator: 'template-preview' | 'openai' };
 // Deliberately deterministic. Preserve quoted answers verbatim; no invented facts.
 export function createPreviewArticle(s: Session, now: number): Article {
   if (s.status !== 'INTERVIEW_COMPLETED') throw new DomainError('WRONG_STATE');

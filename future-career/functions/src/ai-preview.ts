@@ -8,7 +8,7 @@ import { aiPreviewInput, generateWithOpenAI } from './openai.js';
 const key=defineSecret('OPENAI_API_KEY');
 const enabled=defineBoolean('OPENAI_TEACHER_PREVIEW_ENABLED',{default:false});
 // A separate teacher-only test endpoint; it cannot enable student AI access.
-export const aiPreview=onCall({region:'asia-northeast3',secrets:[key],enforceAppCheck:true,maxInstances:2,concurrency:10,timeoutSeconds:60,memory:'256MiB'},async request=>{
+export const aiPreview=onCall({region:'asia-northeast3',invoker:'public',secrets:[key],enforceAppCheck:true,maxInstances:2,concurrency:10,timeoutSeconds:60,memory:'256MiB'},async request=>{
   if(!request.auth) throw new HttpsError('unauthenticated','AUTH_REQUIRED');
   const uid=request.auth.uid,db=getFirestore();
   if(!(await db.doc(`teachers/${uid}`).get()).data()?.active) throw new HttpsError('permission-denied','ACCESS_DENIED');

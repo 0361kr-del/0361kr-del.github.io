@@ -10,7 +10,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "test": "node --import tsx --test tests/*.test.ts",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-future-career 'node --import tsx --test tests/firestore.rules.test.mts'",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-future-career 'GCLOUD_PROJECT=demo-future-career node --import tsx --test tests/firestore.rules.test.mts tests/student-api.integration.mts'",
     "emulators": "firebase emulators:start --project demo-future-career",
     "build:functions": "npm --prefix functions run build"
   },

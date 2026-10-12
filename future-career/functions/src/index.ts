@@ -186,3 +186,5 @@ export const api = onCall({ region: 'asia-northeast3', enforceAppCheck: !emulato
 });
 
 export { aiPreview } from './ai-preview.js';
+
+export { studentApi } from './student-api.js';

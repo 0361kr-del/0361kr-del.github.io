@@ -4,6 +4,7 @@ import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { appendAnswer, classInput, finishSession, startSession, studentInput, type ClassRecord, type Session } from '../shared/domain';
 
+import { aiErrors } from '../shared/ai-errors';
 import { createPreviewArticle, reviseArticle, submitArticle, type Article } from '../shared/article';
 
 export const demo = import.meta.env.VITE_APP_MODE !== 'firebase';
@@ -32,7 +33,7 @@ export async function login(teacher = false) {
   if (teacher) await signInWithPopup(auth!, new GoogleAuthProvider());
   else if (!auth!.currentUser) await signInAnonymously(auth!);
 }
-export async function logout() { if (!demo) { await setup(); await signOut(auth!); } demoTeacher = false; sessionStorage.removeItem('career-session'); }
+export async function logout() { if (!demo) { await setup(); await signOut(auth!); } demoTeacher = false; for(const k of Object.keys(sessionStorage)) if(k.startsWith('career-')) sessionStorage.removeItem(k); }
 const now = Date.now();
 const classes: ClassRecord[] = Array.from({ length: 5 }, (_, i) => ({ id: `demo-class-${i + 1}`, title: `6학년 ${i + 1}반 미래 인터뷰`, classroom: `${i + 1}`, grade: 6, maxStudents: i % 2 ? 22 : 23, questionLimit: 8, futureYear: 2040, objective: '미래 직업의 역할과 사회적 기여를 탐구해요.', teacherUid: 'demo-teacher', status: 'OPEN', studentCount: 0, createdAt: now + i, retainUntil: now + 90 * 86400000 }));
 const sessions = new Map<string, Session>();
@@ -86,7 +87,7 @@ export function resetPreview() {
 }
 let demoTeacher = false;
 export async function call<T>(method: string, payload: Record<string, unknown> = {}, requestId: string = crypto.randomUUID()): Promise<T> {
-  if (!demo) { await setup(); return (await httpsCallable(functions!, 'api')({ method, payload, requestId })).data as T; }
+  if (!demo) { await setup(); return (await httpsCallable(functions!, 'studentApi', {timeout:65000})({ method, payload, requestId })).data as T; }
   const hash = JSON.stringify({ method, payload }); const cached = results.get(requestId);
   if (cached) { if (cached.hash !== hash) throw new Error('IDEMPOTENCY_CONFLICT'); return cached.value as T; }
   const value = mock(method, payload); results.set(requestId, { hash, value }); persist(); return structuredClone(value) as T;
@@ -129,5 +130,5 @@ function mock(method: string, p: Record<string, unknown>): unknown {
   if (method === 'sendAnswer' || method === 'finishInterview') { const session = sessions.get(String(p.sessionId)); if (!session) throw new Error('SESSION_NOT_FOUND'); const { sessionId: ignored, ...answer } = p; const next = method === 'sendAnswer' ? appendAnswer(session, answer, 'demo-student', Date.now()) : finishSession(session, 'demo-student', Number(p.expectedRevision), Date.now()); sessions.set(next.id, next); return { session: next }; }
   throw new Error('NOT_AVAILABLE_IN_DEMO');
 }
-const errors: Record<string, string> = { ENTRY_NOT_CONFIGURED: '이전 방식으로 만든 학급입니다. 새 학급을 만들어 QR을 발급해 주세요.', SESSION_EXISTS: '이미 이 학급에 참여했어요. 처음 화면에서 이어서 하기를 눌러 주세요.', NUMBER_ALREADY_JOINED: '이미 입장한 번호예요. 본인 기록은 이어서 하기로 열고, 다른 학생 번호라면 선생님께 문의하세요.', ACCESS_DENIED: '코드와 참여권을 확인하거나 선생님께 문의해 주세요.', CLASS_UNAVAILABLE: '입장이 마감되었거나 정원이 찼어요.', STUDENT_CLASS_MISMATCH: '학년·반·번호가 참여권 정보와 일치하지 않아요.', REVISION_CONFLICT: '다른 화면에서 내용이 변경되었어요. 기록을 새로 불러와 주세요.', MINIMUM_ANSWERS: '세 번 이상 답한 뒤 마칠 수 있어요.', RATE_LIMIT: '잠시 기다린 뒤 다시 시도해 주세요.', SESSION_NOT_FOUND: '체험 기록이 초기화되었어요. 새로 체험해 주세요.', ADMISSION_ALREADY_ISSUED: '이미 참여권을 발급한 번호예요.', LIVE_INTERVIEW_NOT_ENABLED: '아직 실제 학생용 AI 인터뷰를 열지 않았습니다.', FIREBASE_NOT_CONFIGURED: 'Firebase 프로젝트 연결 설정이 필요합니다.', APPCHECK_NOT_CONFIGURED: 'App Check 설정이 필요합니다.', ARTICLE_SUBMITTED: '이미 제출한 기사는 수정할 수 없어요.', ARTICLE_NOT_FOUND: '먼저 기사 초안을 만들어 주세요.', NOT_AVAILABLE_IN_DEMO: '이번 프리뷰에서는 제공하지 않는 기능입니다.' };
+const errors: Record<string, string> = { ...aiErrors, AI_REQUEST_PENDING: '답변은 저장됐어요. 질문을 만드는 중입니다. 잠시 뒤 다음 질문 받기를 눌러 주세요.', AI_RETRY_LIMIT: '이 질문의 재시도 한도에 도달했습니다. 선생님께 알려 주세요.', AI_DAILY_LIMIT: '오늘의 AI 사용 한도에 도달했습니다. 저장된 기록은 유지됩니다.', ENTRY_NOT_CONFIGURED: '이전 방식으로 만든 학급입니다. 새 학급을 만들어 QR을 발급해 주세요.', SESSION_EXISTS: '이미 이 학급에 참여했어요. 처음 화면에서 이어서 하기를 눌러 주세요.', NUMBER_ALREADY_JOINED: '이미 입장한 번호예요. 본인 기록은 이어서 하기로 열고, 다른 학생 번호라면 선생님께 문의하세요.', ACCESS_DENIED: '이 활동에 접근할 권한이 없습니다. 본인 학급 링크인지 확인하거나 선생님께 문의해 주세요.', CLASS_UNAVAILABLE: '입장이 마감되었거나 정원이 찼어요.', STUDENT_CLASS_MISMATCH: '학급 정보와 출석 번호를 확인해 주세요.', REVISION_CONFLICT: '다른 화면에서 내용이 변경되었어요. 기록을 새로 불러와 주세요.', MINIMUM_ANSWERS: '세 번 이상 답한 뒤 마칠 수 있어요.', RATE_LIMIT: '잠시 기다린 뒤 다시 시도해 주세요.', SESSION_NOT_FOUND: '체험 기록이 초기화되었어요. 새로 체험해 주세요.', ADMISSION_ALREADY_ISSUED: '이미 참여권을 발급한 번호예요.', LIVE_INTERVIEW_NOT_ENABLED: '아직 실제 학생용 AI 인터뷰를 열지 않았습니다.', FIREBASE_NOT_CONFIGURED: 'Firebase 프로젝트 연결 설정이 필요합니다.', APPCHECK_NOT_CONFIGURED: 'App Check 설정이 필요합니다.', ARTICLE_SUBMITTED: '이미 제출한 기사는 수정할 수 없어요.', ARTICLE_NOT_FOUND: '먼저 기사 초안을 만들어 주세요.', NOT_AVAILABLE_IN_DEMO: '이번 프리뷰에서는 제공하지 않는 기능입니다.' };
 export function errorText(error: unknown) { const message = error instanceof Error ? error.message : ''; return Object.entries(errors).find(([key]) => message.includes(key))?.[1] || '처리하지 못했어요. 연결과 입력을 확인하고 다시 시도해 주세요.'; }
