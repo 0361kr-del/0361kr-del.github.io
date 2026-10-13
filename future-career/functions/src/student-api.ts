@@ -177,7 +177,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
       const code=z.string().trim().toUpperCase().regex(/^[A-F0-9]{10}$/).parse(p.code);
       const entry=(await ref(`liveCodes/${hash(code)}`).get()).data();if(!entry)denied();
       const c=await readClass(entry.classId);await requireTeacher(c.teacherUid);if(c.status!=='OPEN')fail('CLASS_UNAVAILABLE');
-      if(method==='resolveClassEntry')return {classInfo:{id:c.id,title:c.title,grade:c.grade,classroom:c.classroom,maxStudents:c.maxStudents,teacherOnly:!launched.value()}};
+      if(method==='resolveClassEntry')return {classInfo:{id:c.id,title:c.title,grade:c.grade,classroom:c.classroom,maxStudents:c.maxStudents,description:c.interviewPlan?.topic||c.objective,teacherOnly:!launched.value()}};
       await allowEnrollment(uid,c.teacherUid);
       const student=studentInput.parse({...studentInput.omit({grade:true,classroom:true}).parse(p.student),grade:c.grade,classroom:c.classroom});
       const sid=db().collection('liveSessions').doc().id;
