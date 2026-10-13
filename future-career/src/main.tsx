@@ -5,7 +5,7 @@ import { AiSettingsFields, ClassAiSettings } from './AiSettings';
 import { defaultAiSettings } from '../shared/ai-settings';
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { call, demo, errorText, login, logout, resetPreview, storageAvailable } from './service';
+import { call, demo, errorText, login, logout, watchTeacherLogin, resetPreview, storageAvailable } from './service';
 import type { ClassRecord } from '../shared/domain';
 import type { LiveSession as Session } from '../shared/live';
 import './style.css';
@@ -18,6 +18,8 @@ function App() {
   const [isOwner,setIsOwner]=useState(false);
   const [globalAi,setGlobalAi]=useState(defaultAiSettings);
   const [createAi,setCreateAi]=useState(defaultAiSettings);
+  const [teacherSignedIn, setTeacherSignedIn] = useState(false);
+  const [authLoading, setAuthLoading] = useState(!demo);
   const [view, setView] = useState<'home' | 'join' | 'teacher' | 'interview' | 'article'>(new URLSearchParams(location.search).has('class') ? 'join' : 'home');
   const [entryCode, setEntryCode] = useState(new URLSearchParams(location.search).get('class') || (demo ? 'ABCD6001' : ''));
   const [classInfo, setClassInfo] = useState<{id:string;title:string;grade:number;classroom:string;maxStudents:number;description?:string;teacherOnly?:boolean}|null>(null);
@@ -34,6 +36,14 @@ function App() {
   const messagesEnd = useRef<HTMLDivElement>(null);
   const pending = useRef<{ key: string; id: string } | null>(null);
   const lock = useRef(false);
+  useEffect(() => {
+    let previouslySignedIn = false;
+    return watchTeacherLogin(signedIn => {
+      setTeacherSignedIn(signedIn); setAuthLoading(false);
+      if (previouslySignedIn && !signedIn) { setIsOwner(false); setClasses([]); setStudents([]); setSelected(null); setSession(null); setAnswer(''); setTab('student'); setView('home'); }
+      previouslySignedIn = signedIn;
+    }, error => { setAuthLoading(false); setError(errorText(error)); });
+  }, []);
   useEffect(() => { const on = () => setOnline(navigator.onLine); window.addEventListener('online', on); window.addEventListener('offline', on); return () => { window.removeEventListener('online', on); window.removeEventListener('offline', on); }; }, []);
   useEffect(() => { const listener = (e: BeforeUnloadEvent) => { if (answer.trim()) { e.preventDefault(); e.returnValue = ''; } }; window.addEventListener('beforeunload', listener); return () => window.removeEventListener('beforeunload', listener); }, [answer]);
   useEffect(() => {
@@ -63,7 +73,7 @@ function App() {
   }
   async function send(text=answer) { if (!session || (!online && !demo)) return; const payload = { sessionId: session.id, text, questionId: session.currentQuestionId, expectedRevision: session.revision }; const key = JSON.stringify(payload); if (pending.current?.key !== key) pending.current = { key, id: crypto.randomUUID() }; const { session: s } = await call<{ session: Session }>('sendAnswer', payload, pending.current.id); remember(s); setAnswer(''); (demo ? localStorage : sessionStorage).removeItem(`career-answer-${s.id}`); pending.current = null; if (!demo && s.awaitingQuestion) await nextQuestion(s.id); }
   async function nextQuestion(sessionId: string) { const r=await call<{session:Session}>('continueInterview',{sessionId}); remember(r.session); }
-  return <><header><button className="brand" onClick={() => { if (answer && !confirm('아직 보내지 않은 답변이 있어요. 처음으로 이동할까요?')) return; setAnswer(''); setView('home'); }}>AI 인터뷰<span>나의 이야기를 기사로</span></button><div className="header-right"><span className="pill">탐구 × 글쓰기</span><button className="quiet" onClick={() => run(async () => { await login(true); const r = await call<{ active: boolean;isOwner?:boolean }>('teacherStatus'); if (!r.active) { setError('교사 기능을 사용할 수 없는 계정입니다. 확인된 Google 계정으로 다시 로그인하거나 운영자에게 문의해 주세요.'); return; } setIsOwner(r.isOwner===true);const config=await call<{ai:ReturnType<typeof defaultAiSettings>}>('getGlobalAi');setGlobalAi(config.ai);setCreateAi(config.ai);setTab('teacher'); await loadClasses(); setView('teacher'); })}>{demo ? '교사 화면 체험' : '교사 작업실'}</button>{!demo && <button className="quiet" disabled={busy} onClick={()=>run(async()=>{await logout();setIsOwner(false);setClasses([]);setStudents([]);setSelected(null);setSession(null);setAnswer('');setTab('student');setView('home');})}>로그아웃</button>}</div></header>
+  return <><header><button className="brand" onClick={() => { if (answer && !confirm('아직 보내지 않은 답변이 있어요. 처음으로 이동할까요?')) return; setAnswer(''); setView('home'); }}>AI 인터뷰<span>나의 이야기를 기사로</span></button><div className="header-right"><span className="pill">탐구 × 글쓰기</span><button className="quiet" disabled={busy||authLoading} onClick={() => run(async () => { await login(true); const r = await call<{ active: boolean;isOwner?:boolean }>('teacherStatus'); if (!r.active) { setError('교사 기능을 사용할 수 없는 계정입니다. 확인된 Google 계정으로 다시 로그인하거나 운영자에게 문의해 주세요.'); return; } setIsOwner(r.isOwner===true);const config=await call<{ai:ReturnType<typeof defaultAiSettings>}>('getGlobalAi');setGlobalAi(config.ai);setCreateAi(config.ai);setTab('teacher'); await loadClasses(); setView('teacher'); })}>{demo ? '교사 화면 체험' : authLoading ? '로그인 확인 중…' : teacherSignedIn ? '교사 작업실' : '로그인'}</button>{!demo && teacherSignedIn && <button className="quiet" disabled={busy} onClick={()=>run(async()=>{await logout();setIsOwner(false);setClasses([]);setStudents([]);setSelected(null);setSession(null);setAnswer('');setTab('student');setView('home');})}>로그아웃</button>}</div></header>
     {demo && <div className="notice">프리뷰 v0.2 · 실제 AI 연결 전, 연습용 질문과 기사 틀로 체험합니다. 가상 이름만 사용하세요. 기록은 이 브라우저에 저장됩니다.</div>}
     {demo && !storageAvailable && <div className="notice warning">브라우저 저장 공간을 사용할 수 없어 기록이 사라질 수 있습니다.</div>}
     {!online && !demo && <div className="notice warning" role="status">인터넷 연결이 끊겼어요. 입력은 화면에 유지되지만 전송과 저장은 할 수 없어요.</div>}

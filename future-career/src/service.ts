@@ -3,7 +3,7 @@ import { newspaperSchema } from '../shared/newspaper';
 import { attachQuestion,saveLiveAnswer,reopenInterview, type LiveSession as Session } from '../shared/live';
 import { aiSettingsSchema } from '../shared/ai-settings';
 import { initializeApp } from 'firebase/app';
-import { getAuth, setPersistence, browserLocalPersistence, signInAnonymously, signInWithPopup, GoogleAuthProvider, signOut, connectAuthEmulator } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signInAnonymously, signInWithPopup, GoogleAuthProvider, signOut, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { appendAnswer, fixtureQuestion, classInput, finishSession, startSession, studentInput, type ClassRecord } from '../shared/domain';
@@ -31,6 +31,16 @@ async function setup() {
     await auth.authStateReady();
   })();
   return ready;
+}
+export function watchTeacherLogin(onChange: (signedIn: boolean) => void, onError: (error: unknown) => void) {
+  let cancelled = false;
+  let unsubscribe: (() => void) | undefined;
+  if (demo) { onChange(false); return () => {}; }
+  setup().then(() => {
+    if (cancelled) return;
+    unsubscribe = onAuthStateChanged(auth!, user => onChange(!!user && !user.isAnonymous), onError);
+  }).catch(error => { if (!cancelled) onError(error); });
+  return () => { cancelled = true; unsubscribe?.(); };
 }
 export async function login(teacher = false) {
   if (demo) { demoTeacher = teacher; return; }
