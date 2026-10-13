@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { aiSettingsSchema } from './ai-settings.js';
 
 const text = (max: number) => z.string().transform(v => v.normalize('NFC').trim()).pipe(z.string().min(1).refine(v => [...v].length <= max));
-export const classInput = z.object({ title: text(80), classroom: text(20), grade: z.number().int().min(1).max(12).default(6), maxStudents: z.number().int().min(1).max(40).default(23), questionLimit: z.number().int().min(5).max(12).default(8), futureYear: z.number().int().min(2026).max(2100).default(2040), objective: text(500), ai: aiSettingsSchema.optional() }).strict();
+export const classInput = z.object({ title: text(80), classroom: text(20), grade: z.number().int().min(1).max(12).default(6), maxStudents: z.number().int().min(1).max(40).default(23), questionLimit: z.number().int().min(5).max(12).default(8), futureYear: z.number().int().min(2026).max(2100).optional(), objective: text(500), ai: aiSettingsSchema.optional() }).strict();
 export const studentInput = z.object({ name: text(40), grade: z.number().int().min(1).max(12), classroom: text(20), number: z.number().int().min(1).max(100), career: text(80), noticeAccepted: z.literal(true) }).strict();
 export const answerInput = z.object({ text: text(1000), questionId: z.string().regex(/^q-\d+$/), expectedRevision: z.number().int().nonnegative() }).strict();
 export const requestIdSchema = z.uuid();
@@ -16,14 +16,14 @@ export function assertOwner(session: Pick<Session, 'ownerUid' | 'retainUntil'>, 
 
 // Emulator-only interview fixtures. These are deliberately NOT an AI substitute.
 export function fixtureQuestion(index: number, career: string, previous = ''): string {
-  const questions = [`미래에 ${career}(으)로 일하는 당신은 어떤 일을 하나요?`, '이 일을 하기 위해 어떤 준비를 했나요?', '어려운 일을 만났을 때 어떻게 해결했나요?', '이 일을 하며 가장 보람을 느꼈던 순간은 언제인가요?', '당신의 일이 우리 사회에 어떤 도움을 주나요?', '동료와 함께 해결한 일을 하나 소개해 주세요.', '앞으로 이루고 싶은 목표는 무엇인가요?', '지금의 나에게 해 주고 싶은 말은 무엇인가요?', '이 일에서 중요하게 생각하는 가치는 무엇인가요?', '새로 배우고 싶은 기술은 무엇인가요?', '하루 일과에서 가장 기억에 남는 일은 무엇인가요?', '미래의 동료에게 어떤 조언을 해 주고 싶나요?'];
+  const questions = [`“${career}”에 대해 먼저 소개해 주세요.`, '이 주제에 관심을 갖게 된 계기는 무엇인가요?', '어려운 일을 만났을 때 어떻게 해결했나요?', '가장 기억에 남는 장면이나 경험은 무엇인가요?', '이 주제가 우리에게 어떤 의미가 있다고 생각하나요?', '그렇게 생각하는 이유를 예를 들어 설명해 주세요.', '앞으로 이루고 싶은 목표는 무엇인가요?', '다른 사람에게 꼭 전하고 싶은 이야기는 무엇인가요?', '이 주제에서 중요하게 생각하는 가치는 무엇인가요?', '더 알아보고 싶은 점은 무엇인가요?', '다른 관점에서 보면 어떤 생각이 드나요?', '오늘 이야기를 한 문장으로 정리하면 무엇인가요?'];
   const context = previous ? `“${[...previous].slice(0, 35).join('')}${[...previous].length > 35 ? '…' : ''}”라고 이야기했군요. ` : '';
   return context + questions[(index - 1) % questions.length];
 }
 export function startSession(id: string, classRecord: ClassRecord, student: StudentInput, uid: string, now: number): Session {
   return { id, classId: classRecord.id, teacherUid: classRecord.teacherUid, ownerUid: uid, career: student.career, student, settings: classInput.parse(classRecordToInput(classRecord)), status: 'INTERVIEWING', answerCount: 0, revision: 0, currentQuestionId: 'q-1', ownershipEpoch: 0, retainUntil: classRecord.retainUntil, createdAt: now, updatedAt: now, messages: [{ id: 'q-1', seq: 1, role: 'reporter', text: fixtureQuestion(1, student.career), createdAt: now }] };
 }
-export function classRecordToInput(c: ClassRecord): ClassInput { return { title: c.title, classroom: c.classroom, grade: c.grade, maxStudents: c.maxStudents, questionLimit: c.questionLimit, futureYear: c.futureYear, objective: c.objective, ...(c.ai ? { ai:c.ai } : {}) }; }
+export function classRecordToInput(c: ClassRecord): ClassInput { return { title: c.title, classroom: c.classroom, grade: c.grade, maxStudents: c.maxStudents, questionLimit: c.questionLimit, objective: c.objective, ...(c.ai ? { ai:c.ai } : {}) }; }
 export function appendAnswer(s: Session, raw: unknown, uid: string, now: number): Session {
   assertOwner(s, uid, now);
   const a = answerInput.parse(raw);

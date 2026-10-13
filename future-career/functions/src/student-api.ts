@@ -100,7 +100,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
     if (kind==='article' && s.status!=='INTERVIEW_COMPLETED') fail('WRONG_STATE');
     if (s.aiLease && s.aiLease.expiresAt>Date.now()) fail('AI_REQUEST_PENDING');
     if ((old.data()?.attempts || 0)>=3) fail('AI_RETRY_LIMIT');
-    const input = { ai:applyAiPolicy(s.settings.ai,globalAi), grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career, futureYear:s.settings.futureYear, questionLimit:s.answerLimit||s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
+    const input = { ai:applyAiPolicy(s.settings.ai,globalAi), grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career,  questionLimit:s.answerLimit||s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
     const request = buildAiRequest(input);
     // UTF-8 byte count is a conservative input-token reservation for this fixed text model.
     const inputBound = Buffer.byteLength(JSON.stringify(request),'utf8') + 1024;

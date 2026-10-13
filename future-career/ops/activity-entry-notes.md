@@ -10,3 +10,6 @@ Validation: frontend/functions builds, 31 unit tests, 14 Firestore emulator test
 
 ## Owner AI policy — 2026-10-13
 Only pinned owner UID hUNsenuelrOlOqvHmYITwpoX2jx2 can save siteConfig/ai through the callable. Teachers may edit tone and interview/article supplemental guidance. Server class create/update and both live generation and AI preview replace client/snapshot model and system prompts with current global policy. Legacy session content remains unchanged; the next AI generation uses current owner policy. Absent global configuration uses bundled defaults. Changing global configuration does not regenerate existing articles. Direct client Firestore writes remain denied.
+
+## General AI interviews — 2026-10-13
+Branding and new class creation now use general AI interviews and topic/role input. Year controls and fixed year text were removed from live and preview UIs and article print layout. Legacy career field names remain for record compatibility; OpenAI receives topicOrRole and no futureYear even for legacy inputs. New class/session settings do not inject a default year. Old documents and completed articles are not rewritten. Bundled-default system prompts generalize to reading, experiences, inquiry and roleplay; exact legacy defaults are upgraded at read time while owner-customized prompts remain unchanged.

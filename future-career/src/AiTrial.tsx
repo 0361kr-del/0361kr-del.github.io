@@ -62,7 +62,7 @@ export function AiTrial() {
   async function request(kind: 'question' | 'article', transcript: Message[]) {
     const auth = await connect();
     if (!auth.currentUser) throw new Error('unauthenticated');
-    const result = await httpsCallable<unknown, Response>(getFunctions(auth.app, 'asia-northeast3'), 'aiPreview', { timeout: 65000 })({ requestId: crypto.randomUUID(), input: { ai, kind, career: career.trim(), futureYear: 2040, questionLimit: 5, transcript, fictionalDataConfirmed: true } });
+    const result = await httpsCallable<unknown, Response>(getFunctions(auth.app, 'asia-northeast3'), 'aiPreview', { timeout: 65000 })({ requestId: crypto.randomUUID(), input: { ai, kind, career: career.trim(), questionLimit: 5, transcript, fictionalDataConfirmed: true } });
     setUsage(result.data.usage); setLatency(result.data.durationMs ?? null);
     return result.data;
   }
@@ -72,7 +72,7 @@ export function AiTrial() {
     setMessages([...transcript, { role: 'reporter', text: [data.result.acknowledgement, data.result.question].filter(Boolean).join('\n') }]);
     setAnswer('');
   }
-  return <><header><a className="brand" href="/">미래의 나, 오늘의 인터뷰</a></header><main>
+  return <><header><a className="brand" href="/">AI 인터뷰 · 나의 이야기를 기사로</a></header><main>
     <section className="join" style={{ maxWidth: 840, margin: '0 auto' }}>
       <p className="eyebrow">교사 전용 · 실제 AI 연결 시험</p><h1>AI 기자와 대화해 보기</h1>
       <p>성인 교사가 가상 내용으로 시험하는 화면입니다. 실제 학생 정보는 입력하지 마세요. 대화는 새로고침하면 사라지며, 서버에는 시험 요청과 결과가 저장됩니다.</p>
@@ -83,7 +83,7 @@ export function AiTrial() {
         <button className="quiet" disabled={busy} onClick={() => run(async () => { await signOut(await connect()); setUser(null); setMessages([]); setArticle(null); setAnswer(''); setConfirmed(false); setUsage(null); })}>로그아웃</button>
       </div>}
       {user && <>
-        <AiSettingsFields value={ai} onChange={setAi} disabled={busy || messages.length>0}/><label>상상할 미래 직업<input value={career} maxLength={80} disabled={busy || messages.length > 0} onChange={e => setCareer(e.target.value)} /></label>
+        <AiSettingsFields value={ai} onChange={setAi} disabled={busy || messages.length>0}/><label>인터뷰 주제 또는 나의 역할<input value={career} maxLength={80} disabled={busy || messages.length > 0} onChange={e => setCareer(e.target.value)} /></label>
         <label className="check"><input type="checkbox" checked={confirmed} disabled={busy || messages.length > 0} onChange={e => setConfirmed(e.target.checked)}/>성인 교사이며, 실제 학생 개인정보 없이 가상 내용만 입력합니다.</label>
         {!messages.length && <button disabled={busy || !confirmed || !career.trim()} onClick={() => run(() => question([]))}>AI 첫 질문 받기</button>}
         <div className="messages" aria-live="polite">{messages.map((m, i) => <article className={`bubble ${m.role}`} key={i}><small>{m.role === 'reporter' ? 'AI 기자' : '가상 답변'}</small><p style={{ whiteSpace: 'pre-wrap' }}>{m.text}</p></article>)}</div>
@@ -92,7 +92,7 @@ export function AiTrial() {
           <button disabled={busy || !answer.trim()}>{answers === 4 ? '마지막 답변 기록' : '답변 보내고 후속 질문 받기'}</button>
         </form>}
         {answers >= 3 && !article && <button className="secondary" disabled={busy || !!answer.trim()} onClick={() => run(async () => { const data = await request('article', messages); if (!('title' in data.result)) throw new Error('INVALID_RESPONSE'); setArticle(data.result); })}>이 대화로 AI 기사 생성</button>}
-        {article && <article className="paper"><p className="eyebrow">미래 직업 가상 인터뷰 · AI 초안</p><h2>{article.title}</h2><h3>{article.subtitle}</h3><p style={{ whiteSpace: 'pre-wrap' }}>{article.body}</p>{article.quotes.map((q, i) => <blockquote key={i}>{q}</blockquote>)}</article>}
+        {article && <article className="paper"><p className="eyebrow">교육용 AI 인터뷰 · AI 초안</p><h2>{article.title}</h2><h3>{article.subtitle}</h3><p style={{ whiteSpace: 'pre-wrap' }}>{article.body}</p>{article.quotes.map((q, i) => <blockquote key={i}>{q}</blockquote>)}</article>}
         {usage && <p className="muted">직전 AI 요청: 입력 {usage.inputTokens} / 출력 {usage.outputTokens} 토큰{latency!==null && ` · OpenAI 응답 ${(latency/1000).toFixed(1)}초`}</p>}
         <p role="status">{busy ? '처리 중입니다. 잠시 기다려 주세요…' : ''}</p>
         {!!messages.length && <button className="quiet" disabled={busy} onClick={() => { if (confirm('현재 시험 대화와 기사 화면을 비울까요?')) { setMessages([]); setArticle(null); setAnswer(''); setUsage(null); } }}>새 가상 인터뷰</button>}

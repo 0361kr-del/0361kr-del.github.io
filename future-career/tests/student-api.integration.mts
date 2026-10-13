@@ -19,6 +19,18 @@ globalThis.fetch=(async(url,init)=>{
 const call=(uid:string,method:string,payload:Record<string,unknown>={},requestId=crypto.randomUUID())=>studentApi.run({auth:{uid,token:{}},data:{method,payload,requestId},rawRequest:{},app:{appId:'test'}} as never) as Promise<any>;
 before(async()=>{await db.doc('teachers/teacher').set({active:true});await db.doc('siteConfig/ai').set({ai:{model:'gpt-5.4-mini-2026-03-17',interviewSystemPrompt:'저장된 인터뷰 본문',articleSystemPrompt:'저장된 기사 본문'}});});
 after(async()=>{globalThis.fetch=originalFetch;await db.terminate();await deleteApp(app);});
+test('legacy bundled defaults upgrade without overwriting owner customization',async()=>{
+ const {getGlobalAi}=await import('../functions/src/ai-policy.ts');
+ const {LEGACY_INTERVIEW_PROMPT,LEGACY_ARTICLE_PROMPT}=await import('../shared/legacy-ai-defaults.ts');
+ const {DEFAULT_INTERVIEW_PROMPT,DEFAULT_ARTICLE_PROMPT}=await import('../shared/ai-settings.ts');
+ const ref=db.doc('siteConfig/ai'),previous=(await ref.get()).data()!;
+ try {
+  await ref.set({ai:{interviewSystemPrompt:LEGACY_INTERVIEW_PROMPT,articleSystemPrompt:LEGACY_ARTICLE_PROMPT}});
+  const upgraded=await getGlobalAi();assert.equal(upgraded.interviewSystemPrompt,DEFAULT_INTERVIEW_PROMPT);assert.equal(upgraded.articleSystemPrompt,DEFAULT_ARTICLE_PROMPT);
+  await ref.set({ai:{interviewSystemPrompt:'소유자가 만든 독서 인터뷰',articleSystemPrompt:'소유자가 만든 기사 지침'}});
+  assert.equal((await getGlobalAi()).interviewSystemPrompt,'소유자가 만든 독서 인터뷰');
+ }finally{await ref.set(previous);}
+});
 test('only the pinned owner changes global AI policy; class tampering cannot override it',async()=>{
  const {OWNER_UID}=await import('../functions/src/ai-policy.ts');
  await db.doc(`teachers/${OWNER_UID}`).set({active:true});

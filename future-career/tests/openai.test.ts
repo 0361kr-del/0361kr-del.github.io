@@ -45,3 +45,12 @@ test('edited system prompts replace task defaults, are routed by stage, and reje
  assert.ok(!article.instructions.includes('3~5문단'));assert.ok(article.instructions.includes('서버 필수 규칙'));
  for(const prompt of ['', '  ', 'x'.repeat(6001)])assert.throws(()=>buildAiRequest({...request(),ai:{...ai,interviewSystemPrompt:prompt}}));
 });
+
+test('general interview accepts no year and never sends a legacy year to AI',()=>{
+ const {futureYear,...general}=request();
+ const body=buildAiRequest({...general,career:'책 속 인물의 선택'});
+ const payload=JSON.parse(body.input);
+ assert.equal(payload.topicOrRole,'책 속 인물의 선택');assert.equal('futureYear' in payload,false);
+ assert.equal('futureYear' in JSON.parse(buildAiRequest(request()).input),false);
+ assert.ok(body.instructions.includes('독서'));assert.ok(!body.instructions.includes('미래 직업 역할극이라는 점을 유지'));
+});

@@ -39,7 +39,7 @@ export async function login(teacher = false) {
 }
 export async function logout() { if (!demo) { await setup(); await signOut(auth!); } demoTeacher = false; localStorage.removeItem('career-resume-session'); for(const k of Object.keys(sessionStorage)) if(k.startsWith('career-')) sessionStorage.removeItem(k); }
 const now = Date.now();
-const classes: ClassRecord[] = Array.from({ length: 5 }, (_, i) => ({ id: `demo-class-${i + 1}`, title: `6학년 ${i + 1}반 미래 인터뷰`, classroom: `${i + 1}`, grade: 6, maxStudents: i % 2 ? 22 : 23, questionLimit: 8, futureYear: 2040, objective: '미래 직업의 역할과 사회적 기여를 탐구해요.', teacherUid: 'demo-teacher', status: 'OPEN', studentCount: 0, createdAt: now + i, retainUntil: now + 90 * 86400000 }));
+const classes: ClassRecord[] = Array.from({ length: 5 }, (_, i) => ({ id: `demo-class-${i + 1}`, title: `6학년 ${i + 1}반 AI 인터뷰`, classroom: `${i + 1}`, grade: 6, maxStudents: i % 2 ? 22 : 23, questionLimit: 8, objective: '주제를 탐구하고 자신의 생각을 구체적으로 표현해요.', teacherUid: 'demo-teacher', status: 'OPEN', studentCount: 0, createdAt: now + i, retainUntil: now + 90 * 86400000 }));
 const sessions = new Map<string, Session>();
 const results = new Map<string, { hash: string; value: unknown }>();
 const codes = new Map(classes.map((c, i) => [`ABCD600${i + 1}`, c.id]));
@@ -75,7 +75,7 @@ if (demo && sessions.size === 0) {
     sessions.set(s.id, s); c.studentCount++;
     if (x.finished) {
       let a = createPreviewArticle(s, now);
-      if (x.submitted) a = submitArticle(a, { title: '우주에서 키운 상추, 식탁 위에 희망을 심다', subtitle: '우주 정원사 하늘의 가상 인터뷰', body: '2040년 우주 정원사로 일하는 하늘은 우주 정거장에서 채소가 자라도록 빛과 물을 관리한다.\n\n하늘은 식물의 변화를 기록하며 과학과 생태를 공부했다고 이야기했다. 잎이 노랗게 변했을 때는 동료와 함께 양분을 점검해 문제를 해결했다.\n\n“제가 기른 상추를 대원들이 맛있게 먹었을 때 기뻤습니다.” 하늘에게 가장 보람 있는 순간을 묻자 돌아온 답이다.\n\n하늘은 먼 우주에서도 신선한 음식을 먹을 수 있도록 돕고 싶다고 말했다.\n\n※ 이 기사는 미래 직업을 상상한 가상 인터뷰를 바탕으로 썼습니다.' }, a.revision, now);
+      if (x.submitted) a = submitArticle(a, { title: '우주에서 키운 상추, 식탁 위에 희망을 심다', subtitle: '우주 정원사 하늘의 가상 인터뷰', body: '미래의 우주 정원사로 일하는 하늘은 우주 정거장에서 채소가 자라도록 빛과 물을 관리한다.\n\n하늘은 식물의 변화를 기록하며 과학과 생태를 공부했다고 이야기했다. 잎이 노랗게 변했을 때는 동료와 함께 양분을 점검해 문제를 해결했다.\n\n“제가 기른 상추를 대원들이 맛있게 먹었을 때 기뻤습니다.” 하늘에게 가장 보람 있는 순간을 묻자 돌아온 답이다.\n\n하늘은 먼 우주에서도 신선한 음식을 먹을 수 있도록 돕고 싶다고 말했다.\n\n※ 이 기사는 미래 직업을 상상한 가상 인터뷰를 바탕으로 썼습니다.' }, a.revision, now);
       articles.set(s.id, a);
     }
   }

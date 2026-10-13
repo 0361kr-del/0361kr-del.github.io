@@ -1,10 +1,12 @@
+import { LEGACY_INTERVIEW_PROMPT, LEGACY_ARTICLE_PROMPT } from '../../shared/legacy-ai-defaults.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
-import { aiSettingsSchema, type AiSettings } from '../../shared/ai-settings.js';
+import { DEFAULT_INTERVIEW_PROMPT, DEFAULT_ARTICLE_PROMPT, aiSettingsSchema, type AiSettings } from '../../shared/ai-settings.js';
 export const OWNER_UID = 'hUNsenuelrOlOqvHmYITwpoX2jx2';
 export const isSiteOwner = (uid: string) => uid === OWNER_UID;
 export async function getGlobalAi() {
-  return aiSettingsSchema.parse((await getFirestore().doc('siteConfig/ai').get()).data()?.ai || {});
+  const ai=aiSettingsSchema.parse((await getFirestore().doc('siteConfig/ai').get()).data()?.ai || {});
+  return {...ai,interviewSystemPrompt:ai.interviewSystemPrompt===LEGACY_INTERVIEW_PROMPT?DEFAULT_INTERVIEW_PROMPT:ai.interviewSystemPrompt,articleSystemPrompt:ai.articleSystemPrompt===LEGACY_ARTICLE_PROMPT?DEFAULT_ARTICLE_PROMPT:ai.articleSystemPrompt};
 }
 export function applyAiPolicy(input: unknown, global: AiSettings): AiSettings {
   const extra=aiSettingsSchema.parse(input || {});

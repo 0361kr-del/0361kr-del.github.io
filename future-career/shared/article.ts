@@ -7,7 +7,7 @@ export type Article = { sessionId: string; original: ArticleText; edited: Articl
 export function createPreviewArticle(s: Session, now: number): Article {
   if (s.status !== 'INTERVIEW_COMPLETED') throw new DomainError('WRONG_STATE');
   const answers = s.messages.filter(m => m.role === 'student');
-  const original = { title: `${s.settings.futureYear}년, ${s.career}의 하루를 만나다`, subtitle: `${s.student.name}이 들려주는 미래의 일과 꿈`, body: [`이 기사는 미래 직업을 상상한 가상 인터뷰입니다. ${s.settings.futureYear}년 ${s.career}(으)로 일하는 ${s.student.name}을 만났습니다.`, ...answers.map((m, i) => `${i === 0 ? '자신의 일을 소개하며' : '이어서'} ${s.student.name}은 이렇게 말했습니다.\n“${m.text}”`)].join('\n\n') };
+  const original = { title: `${s.career}, 인터뷰로 만난 이야기`, subtitle: `${s.student.name}이 들려주는 생각과 경험`, body: [`[교육용 AI 인터뷰] ${s.student.name}과 “${s.career}”에 대해 나눈 이야기입니다. 역할극이나 상상으로 답한 내용은 실제 사실과 다를 수 있습니다.`, ...answers.map((m, i) => `${i === 0 ? '주제를 소개하며' : '이어서'} ${s.student.name}은 이렇게 말했습니다.\n“${m.text}”`)].join('\n\n') };
   return { sessionId: s.id, original, edited: { ...original }, submitted: null, revision: 0, updatedAt: now, submittedAt: null, generator: 'template-preview' };
 }
 export function reviseArticle(a: Article, raw: unknown, revision: number, now: number): Article {
