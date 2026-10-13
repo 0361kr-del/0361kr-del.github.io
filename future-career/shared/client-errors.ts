@@ -27,15 +27,16 @@ Object.assign(errors,{
  SecurityError:'브라우저가 저장 기능을 차단했어요. 작성 중인 글을 복사해 보관해 주세요.',
 });
 const stages:Record<string,string>={startNewInterview:'새 인터뷰 시작',listMySessions:'이전 활동 목록',joinClassByQr:'학급 입장',resolveClassEntry:'학급 확인',getSession:'기록 불러오기',continueInterview:'AI 질문 받기',sendAnswer:'답변 저장',finishInterview:'인터뷰 마치기',reopenInterview:'추가 인터뷰',generateArticle:'기사 생성',getArticle:'기사 불러오기',saveArticle:'기사 저장',submitArticle:'최종 제출',resume:'이어하기'};
-type Diagnostic={code?:unknown;message?:unknown;name?:unknown;action?:unknown;requestId?:unknown};
+type Diagnostic={details?:unknown;code?:unknown;message?:unknown;name?:unknown;action?:unknown;requestId?:unknown};
 export function withRequestContext(error:unknown,action:string,requestId:string) {
  const source=(error && typeof error==='object'?error:{}) as Diagnostic;
  const wrapped=new Error(typeof source.message==='string'?source.message:'');
- return Object.assign(wrapped,{code:source.code,name:source.name,action,requestId});
+ return Object.assign(wrapped,{code:source.code,name:source.name,details:source.details,action,requestId});
 }
 export function errorText(error:unknown):string {
  const e=(error && typeof error==='object'?error:{}) as Diagnostic;
- const code=[e.message,e.code,e.name].find(v=>typeof v==='string' && Object.hasOwn(errors,v)) as string|undefined;
+ const detail=e.details && typeof e.details==='object'?(e.details as {diagnosticCode?:unknown}).diagnosticCode:undefined;
+ const code=[detail,e.message,e.code,e.name].find(v=>typeof v==='string' && Object.hasOwn(errors,v)) as string|undefined;
  const sdkCode=typeof e.code==='string' && /^(functions|auth|appCheck)\/[a-z][a-z0-9-]{0,70}$/.test(e.code)?e.code:undefined;
  const shownCode=code||sdkCode||(e.name==='Error'?'CLIENT_ERROR':'UNKNOWN_ERROR');
  const stage=typeof e.action==='string' && Object.hasOwn(stages,e.action)?stages[e.action]:'';

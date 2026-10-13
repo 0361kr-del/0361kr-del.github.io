@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { classInput, studentInput, startSession, finishSession, DomainError, type ClassRecord } from '../../shared/domain.js';
 import { reviseArticle, submitArticle, type Article } from '../../shared/article.js';
 import { saveLiveAnswer, attachQuestion, reopenInterview, type LiveSession } from '../../shared/live.js';
-import { safeAiError } from '../../shared/ai-errors.js';
+import { aiErrors, safeAiError } from '../../shared/ai-errors.js';
 import { generateWithOpenAI, buildAiRequest } from './openai.js';
 
 const key = defineSecret('OPENAI_API_KEY'), pepper = defineSecret('ACCESS_CODE_PEPPER');
@@ -265,8 +265,10 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
     const diagnosticId=z.uuid().safeParse(request.data?.requestId);
     const method=z.enum(['joinClassByQr','resolveClassEntry','sendAnswer','continueInterview','startNewInterview','reopenInterview','generateArticle','saveArticle','submitArticle']).safeParse(request.data?.method);
     const sdkCode=error instanceof HttpsError?error.code:error instanceof z.ZodError?'invalid-input':error instanceof DomainError?'domain-error':'internal';
-    console.warn(JSON.stringify({event:'student_request_failed',requestId:diagnosticId.success?diagnosticId.data:null,method:method.success?method.data:'other',code:sdkCode}));
-    if(error instanceof HttpsError)throw error;
+    const allowed=new Set([...Object.keys(aiErrors),'WRONG_STATE','AI_REQUEST_PENDING','AI_RETRY_LIMIT','AI_DAILY_LIMIT','LIVE_INTERVIEW_NOT_ENABLED','CLASS_UNAVAILABLE','ACCESS_DENIED','REVISION_CONFLICT','ARTICLE_NOT_FOUND','RATE_LIMIT']);
+    const diagnosticCode=error instanceof HttpsError && allowed.has(error.message)?error.message:undefined;
+    console.warn(JSON.stringify({event:'student_request_failed',requestId:diagnosticId.success?diagnosticId.data:null,method:method.success?method.data:'other',code:sdkCode,...(diagnosticCode?{diagnosticCode}:{})}));
+    if(error instanceof HttpsError)throw new HttpsError(error.code,error.message,diagnosticCode?{diagnosticCode}:undefined);
     if(error instanceof DomainError)throw new HttpsError('failed-precondition',error.code);
     if(error instanceof z.ZodError)throw new HttpsError('invalid-argument','INVALID_INPUT');
     console.error(JSON.stringify({event:'student_api_internal',code:'SAFE_INTERNAL_ERROR'}));

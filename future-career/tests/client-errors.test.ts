@@ -18,3 +18,9 @@ test('unmapped Firebase SDK codes survive contextual wrapping without exposing e
  assert.ok(errorText(withRequestContext(new TypeError('private text'),'joinClassByQr','')).includes('진단: TypeError'));
  assert.ok(errorText({code:'functions/unknown'}).includes('진단: functions/unknown'));
 });
+
+test('structured callable diagnostic survives transport message replacement',()=>{
+ const wrapped=withRequestContext({code:'functions/failed-precondition',message:'FAILED_PRECONDITION',details:{diagnosticCode:'AI_UNSUPPORTED_QUOTE'}},'generateArticle','c16a4e6c-032e-4902-99ba-b2b422384a96');
+ assert.match(errorText(wrapped),/AI_UNSUPPORTED_QUOTE/);
+ assert.ok(!errorText({details:{diagnosticCode:'student private text'}}).includes('student private text'));
+});
