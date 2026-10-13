@@ -20,8 +20,8 @@ const questionResult = z.object({ acknowledgement:z.string().max(180),question:z
 export const guidedResult=z.object({acknowledgement:z.string().max(180),question:z.string().max(400),assessment:assessmentSchema,nextStage:stageSchema,mainIndex:z.number().int().min(0).max(16)}).strict().refine(v=>v.nextStage==='END'?v.question==='':v.question.trim().length>0);
 const articleResult = z.object({ title:z.string().min(1).max(120),subtitle:z.string().max(200),body:z.string().min(1).max(8000),quotes:z.array(z.string().min(1).max(1000)).max(3) }).strict();
 const schemas = {
-  question:{type:'object',properties:{acknowledgement:{type:'string'},question:{type:'string'}},required:['acknowledgement','question'],additionalProperties:false},
-  guided:{type:'object',properties:{acknowledgement:{type:'string'},question:{type:'string'},assessment:{type:'string',enum:['sufficient','needs_detail','skip']},nextStage:{type:'string',enum:['INTRO','WARMUP','MAIN','CLOSING','END']},mainIndex:{type:'integer'}},required:['acknowledgement','question','assessment','nextStage','mainIndex'],additionalProperties:false},
+  question:{type:'object',properties:{acknowledgement:{type:'string',maxLength:180},question:{type:'string',maxLength:400}},required:['acknowledgement','question'],additionalProperties:false},
+  guided:{type:'object',properties:{acknowledgement:{type:'string',maxLength:180},question:{type:'string',maxLength:400},assessment:{type:'string',enum:['sufficient','needs_detail','skip']},nextStage:{type:'string',enum:['INTRO','WARMUP','MAIN','CLOSING','END']},mainIndex:{type:'integer'}},required:['acknowledgement','question','assessment','nextStage','mainIndex'],additionalProperties:false},
   article:{type:'object',properties:{title:{type:'string'},subtitle:{type:'string'},body:{type:'string'},quotes:{type:'array',items:{type:'string'}}},required:['title','subtitle','body','quotes'],additionalProperties:false},
 };
 export function buildAiRequest(raw: unknown) {
@@ -37,7 +37,7 @@ export function buildAiRequest(raw: unknown) {
   const contract = input.kind==='question'
     ? '출력 형식: acknowledgement는 180자 이하, question은 한 번에 하나의 질문으로 400자 이하입니다.'
     : '출력 형식: title 120자 이하, subtitle 200자 이하, body 8000자 이하입니다. 교육용 AI 인터뷰를 바탕으로 작성했음을 표시하고 역할극이나 상상 내용은 사실로 단정하지 않습니다. body에는 직접 인용을 넣지 않습니다. quotes는 학생 답변에서 철자와 문장부호까지 정확히 발췌한 인용 0~3개만 담습니다. 표현을 고쳐 쓰지 말고 정확한 인용이 없으면 빈 배열을 반환합니다.';
-  return { model:input.ai.model,...((input.ai.model.startsWith('gpt-5')||input.ai.model==='gpt-6-luna')?{reasoning:{effort:'none' as const}}:{}),store:false,instructions:instruction+(guided&&input.kind==='question'?'\n'+GUIDED_INTERVIEW_RULES:'')+'\n'+AI_SAFETY_RULES+'\n'+contract+'\n수업 수준: '+input.grade+'학년. 말투: '+input.ai.tone+'\n교사 교육 설정(JSON): '+JSON.stringify({objective:input.objective,interviewPlan:input.interviewPlan,additional:input.kind==='question'?input.ai.interviewInstructions:input.ai.articleInstructions}),input:JSON.stringify({topicOrRole:input.career,guided:input.guided,allowedTransitions:transitions,questionLimit:input.questionLimit,transcript:input.transcript}),max_output_tokens:input.kind==='question'?500:2200,text:{format:{type:'json_schema',name:input.kind==='question'?'interview_question':'interview_article',strict:true,schema:guided&&input.kind==='question'?schemas.guided:schemas[input.kind]}} };
+  return { model:input.ai.model,...((input.ai.model.startsWith('gpt-5')||input.ai.model==='gpt-6-luna')?{reasoning:{effort:'none' as const}}:{}),store:false,instructions:instruction+(guided&&input.kind==='question'?'\n'+GUIDED_INTERVIEW_RULES:'')+'\n'+AI_SAFETY_RULES+'\n'+contract+'\n수업 수준: '+input.grade+'학년. 말투: '+input.ai.tone+'\n교사 교육 설정(JSON): '+JSON.stringify({objective:input.objective,interviewPlan:input.interviewPlan,additional:input.kind==='question'?input.ai.interviewInstructions:input.ai.articleInstructions}),input:JSON.stringify({topicOrRole:input.career,guided:input.guided,allowedTransitions:transitions,questionLimit:input.questionLimit,transcript:input.transcript}),max_output_tokens:input.kind==='question'?500:2200,text:{format:{type:'json_schema',name:input.kind==='question'?'interview_question':'interview_article',strict:true,schema:guided&&input.kind==='question'?{...schemas.guided,properties:{...schemas.guided.properties,nextStage:{type:'string',enum:[...new Set(Object.values(transitions!).map(t=>t.nextStage))]},mainIndex:{type:'integer',enum:[...new Set(Object.values(transitions!).map(t=>t.mainIndex))]}}}:schemas[input.kind]}} };
 }
 export async function generateWithOpenAI(raw: unknown, apiKey: string, fetcher: typeof fetch=fetch) {
   if(!apiKey.trim()) throw new Error('AI_NOT_CONFIGURED');
@@ -55,9 +55,9 @@ export async function generateWithOpenAI(raw: unknown, apiKey: string, fetcher: 
   const content=(data.output||[]).filter(x=>x.type==='message').flatMap(x=>x.content||[]);
   if(content.some(c=>c.type==='refusal')) throw new Error('AI_REFUSED');
   const text=content.filter(c=>c.type==='output_text').map(c=>c.text||'').join('');
-  let parsed: unknown;try{parsed=JSON.parse(text);}catch{throw new Error('AI_INVALID_OUTPUT');}
+  let parsed: unknown;try{parsed=JSON.parse(text);}catch{console.warn(JSON.stringify({event:'ai_output_validation',kind:input.kind,reason:'invalid_json',model:input.ai.model}));throw new Error('AI_INVALID_OUTPUT');}
   const checked=input.kind==='question'?(input.guided?guidedResult.safeParse(parsed):questionResult.safeParse(parsed)):articleResult.safeParse(parsed);
-  if(!checked.success) throw new Error('AI_INVALID_OUTPUT');
+  if(!checked.success) { console.warn(JSON.stringify({event:'ai_output_validation',kind:input.kind,model:input.ai.model,issues:checked.error.issues.map(i=>({code:i.code,path:i.path.filter(p=>typeof p==='string'&&['acknowledgement','question','assessment','nextStage','mainIndex','title','subtitle','body','quotes'].includes(p))}))})); throw new Error('AI_INVALID_OUTPUT'); }
   const result=checked.data;
   // Quotes are optional: keep exact student excerpts only, without failing the entire draft or paying for a retry.
   if('quotes' in result) result.quotes=result.quotes.filter(q=>input.transcript.some(t=>t.role==='student'&&t.text.includes(q)));

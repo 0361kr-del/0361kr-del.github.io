@@ -68,3 +68,9 @@ test('GPT-6 Luna is opt-in and retains low-latency structured output contract',(
  assert.equal(body.model,'gpt-6-luna');assert.deepEqual(body.reasoning,{effort:'none'});assert.equal(body.store,false);assert.equal(body.text.format.strict,true);
  assert.equal(buildAiRequest(request()).model,'gpt-4.1-mini-2025-04-14');
 });
+
+test('question schema enforces field lengths before provider generation',()=>{
+ const schema=buildAiRequest(request()).text.format.schema;
+ assert.equal(schema.properties.acknowledgement.maxLength,180);
+ assert.equal(schema.properties.question.maxLength,400);
+});
