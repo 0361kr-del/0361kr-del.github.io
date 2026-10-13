@@ -129,7 +129,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
         const article: Article={sessionId:sid,original,edited:{...original},submitted:null,revision:0,updatedAt:Date.now(),submittedAt:null,generator:'openai'};
         tx.create(ar,article);tx.update(sr,{aiLease:null,articleState:'editing'});
       }
-      tx.update(job,{status:'done',model:result.model,promptVersion:'teacher-settings-v1',usage:result.usage,durationMs:Date.now()-started});
+      tx.update(job,{status:'done',model:result.model,promptVersion:'editable-system-v2',usage:result.usage,durationMs:Date.now()-started});
     });
   } catch(error) {
     const code = safeAiError(error);
@@ -143,7 +143,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
   if(!request.auth) throw new HttpsError('unauthenticated','AUTH_REQUIRED');
   const uid=request.auth.uid;
   try {
-    if(Buffer.byteLength(JSON.stringify(request.data))>32768) fail('INVALID_INPUT');
+    if(Buffer.byteLength(JSON.stringify(request.data))>65536) fail('INVALID_INPUT');
     const {method,payload:p,requestId}=z.object({method:z.string(),payload:z.record(z.string(),z.unknown()),requestId:z.uuid()}).strict().parse(request.data);
     await rate(uid);
     if(method==='deleteClass'){if(p.confirm!==true)fail('INVALID_INPUT');return await deleteClassData(id.parse(p.classId),uid);}

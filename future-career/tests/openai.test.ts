@@ -34,3 +34,14 @@ test('teacher configuration selects allowlisted model while retaining fixed safe
  assert.throws(()=>buildAiRequest({...configured,ai:{...configured.ai,interviewInstructions:'x'.repeat(1001)}}));
  assert.equal(buildAiRequest(request()).model,'gpt-4.1-mini-2025-04-14');
 });
+test('edited system prompts replace task defaults, are routed by stage, and reject blank or oversized values',()=>{
+ const ai={interviewSystemPrompt:'교사 인터뷰 본문: 먼저 직업을 고른 이유를 물어보세요.',articleSystemPrompt:'교사 기사 본문: 두 문단으로 작성하세요.'};
+ const question=buildAiRequest({...request(),ai});
+ assert.ok(question.instructions.startsWith(ai.interviewSystemPrompt));
+ assert.ok(!question.instructions.includes('첫 질문은 직업에서 하는 일을 묻습니다.'));
+ assert.ok(!question.instructions.includes(ai.articleSystemPrompt));
+ const article=buildAiRequest({...request(),kind:'article',transcript:Array.from({length:3},()=>({role:'student',text:'산호를 관찰합니다.'})),ai});
+ assert.ok(article.instructions.startsWith(ai.articleSystemPrompt));
+ assert.ok(!article.instructions.includes('3~5문단'));assert.ok(article.instructions.includes('서버 필수 규칙'));
+ for(const prompt of ['', '  ', 'x'.repeat(6001)])assert.throws(()=>buildAiRequest({...request(),ai:{...ai,interviewSystemPrompt:prompt}}));
+});

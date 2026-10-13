@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { aiSettingsSchema, AI_BASE_PROMPT } from '../../shared/ai-settings.js';
+import { aiSettingsSchema, AI_SAFETY_RULES } from '../../shared/ai-settings.js';
 
 export const aiPreviewInput = z.object({
   ai: aiSettingsSchema.default(() => aiSettingsSchema.parse({})),
@@ -26,10 +26,11 @@ export function buildAiRequest(raw: unknown) {
   if(input.kind==='question' && answers.length>=input.questionLimit) throw new Error('INTERVIEW_LIMIT_REACHED');
   // Obvious contact identifiers are rejected, not silently treated as anonymized.
   if(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b|01[016789][ -]?\d{3,4}[ -]?\d{4}|\d{6}[ -]?[1-4]\d{6}/.test(JSON.stringify(input))) throw new Error('PERSONAL_DATA_DETECTED');
-  const instruction = input.kind==='question'
-    ? '인사나 수식어를 줄여 직전 답변을 한 문장으로 받아 주고, 구체적인 경험을 묻는 질문을 정확히 하나 생성합니다. 같은 질문을 반복하지 않습니다. 단답에는 예시나 이유를 묻습니다. 직업의 역할, 준비, 어려움, 보람, 사회적 기여가 균형을 이루도록 아직 다루지 않은 주제를 선택합니다. 첫 질문은 직업에서 하는 일을 묻습니다.'
-    : '인터뷰에 나온 내용만으로 제목, 부제, 3~5문단의 기사 본문을 작성합니다. 이름 대신 인터뷰 참여자라고 씁니다. body 맨 앞에 [미래 직업 가상 인터뷰]를 표시합니다. body에는 직접 인용 부호를 사용하지 말고 서술합니다. quotes에는 학생 답변에서 그대로 발췌한 문장만 0~3개 넣습니다. 부족한 정보는 생략하고 추측하지 않습니다.';
-  return { model:input.ai.model,...(input.ai.model.startsWith('gpt-5')?{reasoning:{effort:'none' as const}}:{}),store:false,instructions:AI_BASE_PROMPT+'\n'+instruction+'\n수업 수준: '+input.grade+'학년. 말투: '+input.ai.tone+'\n교사 교육 설정(JSON): '+JSON.stringify({objective:input.objective,additional:input.kind==='question'?input.ai.interviewInstructions:input.ai.articleInstructions}),input:JSON.stringify({career:input.career,futureYear:input.futureYear,questionLimit:input.questionLimit,transcript:input.transcript}),max_output_tokens:input.kind==='question'?500:2200,text:{format:{type:'json_schema',name:input.kind==='question'?'interview_question':'interview_article',strict:true,schema:schemas[input.kind]}} };
+  const instruction = input.kind==='question' ? input.ai.interviewSystemPrompt : input.ai.articleSystemPrompt;
+  const contract = input.kind==='question'
+    ? '출력 형식: acknowledgement는 180자 이하, question은 한 번에 하나의 질문으로 400자 이하입니다.'
+    : '출력 형식: title 120자 이하, subtitle 200자 이하, body 8000자 이하입니다. 미래 직업 가상 인터뷰임을 표시합니다. quotes는 학생 답변에서 정확히 발췌한 인용 0~3개만 담습니다.';
+  return { model:input.ai.model,...(input.ai.model.startsWith('gpt-5')?{reasoning:{effort:'none' as const}}:{}),store:false,instructions:instruction+'\n'+AI_SAFETY_RULES+'\n'+contract+'\n수업 수준: '+input.grade+'학년. 말투: '+input.ai.tone+'\n교사 교육 설정(JSON): '+JSON.stringify({objective:input.objective,additional:input.kind==='question'?input.ai.interviewInstructions:input.ai.articleInstructions}),input:JSON.stringify({career:input.career,futureYear:input.futureYear,questionLimit:input.questionLimit,transcript:input.transcript}),max_output_tokens:input.kind==='question'?500:2200,text:{format:{type:'json_schema',name:input.kind==='question'?'interview_question':'interview_article',strict:true,schema:schemas[input.kind]}} };
 }
 export async function generateWithOpenAI(raw: unknown, apiKey: string, fetcher: typeof fetch=fetch) {
   if(!apiKey.trim()) throw new Error('AI_NOT_CONFIGURED');

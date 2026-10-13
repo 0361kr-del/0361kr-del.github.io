@@ -12,7 +12,7 @@ const originalFetch=globalThis.fetch;
 globalThis.fetch=(async(url,init)=>{
   if(String(url)!=='https://api.openai.com/v1/responses')throw new Error('Unexpected external request');
   providerCalls++;const body=JSON.parse(String(init?.body));
-  assert.equal(body.model,'gpt-5.4-mini-2026-03-17');assert.deepEqual(body.reasoning,{effort:'none'});
+  assert.equal(body.model,'gpt-5.4-mini-2026-03-17');assert.deepEqual(body.reasoning,{effort:'none'});assert.ok(body.instructions.startsWith(body.text.format.name==='interview_question'?'저장된 인터뷰 본문':'저장된 기사 본문'));
   const result=body.text.format.name==='interview_question'?{acknowledgement:'알겠습니다.',question:'어떤 경험을 했나요?'}:{title:'미래의 일',subtitle:'가상 인터뷰',body:'[미래 직업 가상 인터뷰] 바다를 관찰했다.',quotes:[]};
   return new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(result)}]}],usage:{input_tokens:100,output_tokens:50}}));
 }) as typeof fetch;
@@ -22,15 +22,15 @@ after(async()=>{globalThis.fetch=originalFetch;await db.terminate();await delete
 test('class QR, ownership, concurrent generation, immutable original, submission and closed class',async()=>{
  const {classRecord:c,code}=await call('teacher','createClass',{title:'가상 수업',classroom:'1',objective:'진로 탐색',questionLimit:5});
  const student={name:'가상별명',number:1,career:'바다 연구원',noticeAccepted:true};
- const ai={model:'gpt-5.4-mini-2026-03-17',tone:'차분한 기자',interviewInstructions:'환경 보호 경험',articleInstructions:'사회 기여'};
+ const ai={model:'gpt-5.4-mini-2026-03-17',tone:'차분한 기자',interviewInstructions:'환경 보호 경험',articleInstructions:'사회 기여',interviewSystemPrompt:'저장된 인터뷰 본문',articleSystemPrompt:'저장된 기사 본문'};
  await assert.rejects(()=>call('intruder','updateClassAi',{classId:c.id,ai}));
  await call('teacher','updateClassAi',{classId:c.id,ai});
  let {session:s}=await call('student','joinClassByQr',{code,student});
  assert.equal(s.settings.ai.model,ai.model);
- await call('teacher','updateClassAi',{classId:c.id,ai:{...ai,model:'gpt-4.1-mini-2025-04-14'}});
+ await call('teacher','updateClassAi',{classId:c.id,ai:{...ai,model:'gpt-4.1-mini-2025-04-14',interviewSystemPrompt:'새 학생용 본문'}});
  assert.equal((await call('student','getSession',{sessionId:s.id})).session.settings.ai.model,ai.model);
  const second=(await call('student-two','joinClassByQr',{code,student:{...student,number:2}})).session;
- assert.equal(second.settings.ai.model,'gpt-4.1-mini-2025-04-14');
+ assert.equal(second.settings.ai.model,'gpt-4.1-mini-2025-04-14');assert.equal(second.settings.ai.interviewSystemPrompt,'새 학생용 본문');
  await assert.rejects(()=>call('intruder','getSession',{sessionId:s.id}));
  await assert.rejects(()=>call('intruder','joinClassByQr',{code,student}));
  assert.equal((await call('student','joinClassByQr',{code,student})).session.id,s.id);
