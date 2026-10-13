@@ -11,3 +11,10 @@ test('unknown diagnostic text cannot disclose arbitrary messages, prototype keys
  assert.ok(!errorText({requestId:'private student'}).includes('private student'));
  assert.ok(errorText({name:'QuotaExceededError'}).includes('저장 공간'));
 });
+
+test('unmapped Firebase SDK codes survive contextual wrapping without exposing error messages',()=>{
+ const e=withRequestContext({code:'appCheck/fetch-network-error',message:'private provider text'},'joinClassByQr','277bc7df-888e-4bcc-b717-5b1823c99779');
+ const text=errorText(e);assert.ok(text.includes('appCheck/fetch-network-error'));assert.ok(!text.includes('private provider text'));
+ assert.ok(errorText(withRequestContext(new TypeError('private text'),'joinClassByQr','')).includes('진단: TypeError'));
+ assert.ok(errorText({code:'functions/unknown'}).includes('진단: functions/unknown'));
+});

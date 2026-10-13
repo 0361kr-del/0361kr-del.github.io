@@ -264,6 +264,10 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
     }
     fail('UNKNOWN_METHOD');
   } catch(error) {
+    const diagnosticId=z.uuid().safeParse(request.data?.requestId);
+    const method=z.enum(['joinClassByQr','resolveClassEntry','sendAnswer','continueInterview','startNewInterview','reopenInterview','generateArticle','saveArticle','submitArticle']).safeParse(request.data?.method);
+    const sdkCode=error instanceof HttpsError?error.code:error instanceof z.ZodError?'invalid-input':error instanceof DomainError?'domain-error':'internal';
+    console.warn(JSON.stringify({event:'student_request_failed',requestId:diagnosticId.success?diagnosticId.data:null,method:method.success?method.data:'other',code:sdkCode}));
     if(error instanceof HttpsError)throw error;
     if(error instanceof DomainError)throw new HttpsError('failed-precondition',error.code);
     if(error instanceof z.ZodError)throw new HttpsError('invalid-argument','INVALID_INPUT');

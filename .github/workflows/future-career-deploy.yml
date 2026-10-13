@@ -43,6 +43,7 @@ jobs:
           workload_identity_provider: projects/16827856751/locations/global/workloadIdentityPools/career-github/providers/github-deploy
           service_account: career-github-deployer@future-career-interview.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@v3
+      - run: python3 ops/diagnose-student-errors.py
       - run: python3 ops/prepare-ci-env.py
       - run: npm run build
       - name: Deploy existing functions and hosting

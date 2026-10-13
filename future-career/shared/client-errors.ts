@@ -8,6 +8,10 @@ Object.assign(errors,{
  AUTH_REQUIRED:'로그인이 만료됐어요. 작성 중인 글을 복사한 뒤 다시 접속해 주세요.',
  WRONG_STATE:'현재 진행 단계에서는 이 작업을 할 수 없어요. 저장 기록을 새로 불러와 주세요.',
  IDEMPOTENCY_CONFLICT:'이전 요청과 내용이 달라 처리하지 못했어요. 글을 복사한 뒤 저장 기록을 확인해 주세요.',
+ 'functions/unknown':'서버나 네트워크에서 예상하지 못한 응답을 받았어요. 아래 진단 코드를 선생님께 알려 주세요.',
+ 'functions/failed-precondition':'현재 계정 또는 활동 상태에서 요청을 처리할 수 없어요. 선생님께 아래 진단 코드를 알려 주세요.',
+ 'functions/cancelled':'요청이 취소됐어요. 저장 기록을 먼저 확인해 주세요.',
+ TypeError:'브라우저에서 요청을 만들거나 처리하지 못했어요. 브라우저 종류와 아래 진단 코드를 선생님께 알려 주세요.',
  'functions/internal':'서버 응답을 처리하지 못했어요. 아래 진단 코드를 선생님께 알려 주세요.',
  'functions/unauthenticated':'로그인 또는 앱 인증을 확인하지 못했어요. 글을 복사해 두고 선생님께 알려 주세요.',
  'functions/permission-denied':'이 기록에 접근할 권한이 없어요. 본인 학급인지 확인해 주세요.',
@@ -32,7 +36,9 @@ export function withRequestContext(error:unknown,action:string,requestId:string)
 export function errorText(error:unknown):string {
  const e=(error && typeof error==='object'?error:{}) as Diagnostic;
  const code=[e.message,e.code,e.name].find(v=>typeof v==='string' && Object.hasOwn(errors,v)) as string|undefined;
+ const sdkCode=typeof e.code==='string' && /^(functions|auth|appCheck)\/[a-z][a-z0-9-]{0,70}$/.test(e.code)?e.code:undefined;
+ const shownCode=code||sdkCode||(e.name==='Error'?'CLIENT_ERROR':'UNKNOWN_ERROR');
  const stage=typeof e.action==='string' && Object.hasOwn(stages,e.action)?stages[e.action]:'';
  const request=typeof e.requestId==='string' && /^[a-f0-9-]{36}$/i.test(e.requestId)?' · 요청 '+e.requestId:'';
- return (stage?stage+': ':'')+(code?errors[code]:'요청을 처리하지 못했어요. 작성 중인 글을 보관하고 선생님께 아래 진단 코드를 알려 주세요.')+' (진단: '+(code||'UNKNOWN_ERROR')+request+')';
+ return (stage?stage+': ':'')+(code?errors[code]:'요청을 처리하지 못했어요. 작성 중인 글을 보관하고 선생님께 아래 진단 코드를 알려 주세요.')+' (진단: '+shownCode+request+')';
 }
