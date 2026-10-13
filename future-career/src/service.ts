@@ -1,5 +1,6 @@
+import {nextGuided,explicitlyDeclines} from '../shared/interview-plan';
 import { newspaperSchema } from '../shared/newspaper';
-import { reopenInterview, type LiveSession as Session } from '../shared/live';
+import { attachQuestion,saveLiveAnswer,reopenInterview, type LiveSession as Session } from '../shared/live';
 import { aiSettingsSchema } from '../shared/ai-settings';
 import { initializeApp } from 'firebase/app';
 import { getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInAnonymously, signInWithPopup, GoogleAuthProvider, signOut, connectAuthEmulator } from 'firebase/auth';
@@ -142,6 +143,11 @@ function mock(method: string, p: Record<string, unknown>): unknown {
   }
   if (method === 'getSession') { const session = sessions.get(String(p.sessionId)); if (!session) throw new Error('SESSION_NOT_FOUND'); return { session }; }
   if(method==='reopenInterview'){const s=sessions.get(String(p.sessionId));if(!s)throw new Error('SESSION_NOT_FOUND');let next=reopenInterview(s,'demo-student',Number(p.expectedRevision),Date.now());if(next.awaitingQuestion){const q={id:`q-${s.answerCount+1}`,seq:s.messages.length+1,role:'reporter' as const,text:fixtureQuestion((s.answerCount%12)+1,s.career),createdAt:Date.now()};next={...next,messages:[...next.messages,q],currentQuestionId:q.id,awaitingQuestion:false};}sessions.set(s.id,next);return {session:next};}
+  if(method==='sendAnswer' && sessions.get(String(p.sessionId))?.guided){
+   let s=sessions.get(String(p.sessionId))!;const {sessionId:_id,...raw}=p;s=saveLiveAnswer(s,raw,'demo-student',Date.now());
+   if(s.awaitingQuestion&&s.guided&&s.settings.interviewPlan){const assessment=explicitlyDeclines(String(p.text))?'skip':String(p.text).length<8?'needs_detail':'sufficient';const next=nextGuided(s.guided,s.settings.interviewPlan,assessment,true);s=attachQuestion(s,'demo-student',s.revision,next.stage==='END'?'이야기를 들려줘서 고맙습니다.':fixtureQuestion(s.answerCount+1,s.career),Date.now(),{assessment,nextStage:next.stage,mainIndex:next.mainIndex});}
+   sessions.set(s.id,s);return {session:s};
+  }
   if (method === 'sendAnswer' || method === 'finishInterview') { const session = sessions.get(String(p.sessionId)); if (!session) throw new Error('SESSION_NOT_FOUND'); const { sessionId: ignored, ...answer } = p; const next = method === 'sendAnswer' ? {...appendAnswer({...session,settings:{...session.settings,questionLimit:session.answerLimit||session.settings.questionLimit}}, answer, 'demo-student', Date.now()),settings:session.settings} : finishSession(session, 'demo-student', Number(p.expectedRevision), Date.now()); sessions.set(next.id, next); return { session: next }; }
   throw new Error('NOT_AVAILABLE_IN_DEMO');
 }

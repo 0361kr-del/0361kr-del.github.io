@@ -13,12 +13,38 @@ globalThis.fetch=(async(url,init)=>{
   if(String(url)!=='https://api.openai.com/v1/responses')throw new Error('Unexpected external request');
   providerCalls++;const body=JSON.parse(String(init?.body));
   assert.equal(body.model,'gpt-5.4-mini-2026-03-17');assert.deepEqual(body.reasoning,{effort:'none'});assert.ok(body.instructions.startsWith(body.text.format.name==='interview_question'?'저장된 인터뷰 본문':'저장된 기사 본문'));
+  const context=JSON.parse(body.input);
+  if(context.guided && body.text.format.name==='interview_question'){
+   const answer=context.transcript.at(-1)?.text;
+   const assessment=answer==='짧음'?'needs_detail':'sufficient';
+   const next=context.allowedTransitions[assessment];
+   return new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({acknowledgement:next.nextStage==='END'?'이야기를 들려줘서 고맙습니다.':'이야기를 들었어요.',question:next.nextStage==='END'?'':'어떤 장면이 기억에 남나요?',assessment,nextStage:next.nextStage,mainIndex:next.mainIndex})}]}],usage:{input_tokens:100,output_tokens:50}}));
+  }
   const result=body.text.format.name==='interview_question'?{acknowledgement:'알겠습니다.',question:'어떤 경험을 했나요?'}:{title:'미래의 일',subtitle:'가상 인터뷰',body:'[교육용 AI 인터뷰] 바다를 관찰했다.',quotes:['없는 수상 경력을 지어냈습니다.','바다를 관찰했습니다.']};
   return new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(result)}]}],usage:{input_tokens:100,output_tokens:50}}));
 }) as typeof fetch;
 const call=(uid:string,method:string,payload:Record<string,unknown>={},requestId=crypto.randomUUID())=>studentApi.run({auth:{uid,token:{}},data:{method,payload,requestId},rawRequest:{},app:{appId:'test'}} as never) as Promise<any>;
 before(async()=>{await db.doc('teachers/teacher').set({active:true});await db.doc('siteConfig/ai').set({ai:{model:'gpt-5.4-mini-2026-03-17',interviewSystemPrompt:'저장된 인터뷰 본문',articleSystemPrompt:'저장된 기사 본문'}});});
 after(async()=>{globalThis.fetch=originalFetch;await db.terminate();await deleteApp(app);});
+test('guided flow saves answers once, holds main count on followup and closes without another question',async()=>{
+ const plan={version:2,topic:'독서',mode:'inquiry',mainCount:3,followupLimit:2,questions:[],articleFocus:'생각'};
+ const {code}=await call('teacher','createClass',{title:'보충 질문',classroom:'1',objective:'생각 표현',questionLimit:3,interviewPlan:plan});
+ let s=(await call('guided-user','joinClassByQr',{code,student:{name:'별명',number:1,career:'책 속 인물',noticeAccepted:true}})).session;
+ const next=async()=>{s=(await call('guided-user','continueInterview',{sessionId:s.id})).session;};
+ const answer=async(text:string)=>{const id=crypto.randomUUID(),payload={sessionId:s.id,text,questionId:s.currentQuestionId,expectedRevision:s.revision};s=(await call('guided-user','sendAnswer',payload,id)).session;assert.equal((await call('guided-user','sendAnswer',payload,id)).session.answerCount,s.answerCount);await next();};
+ await next();assert.equal(s.guided.stage,'INTRO');
+ await answer('소개');assert.equal(s.guided.stage,'WARMUP');
+ await answer('도입');assert.equal(s.guided.mainIndex,1);
+ await answer('짧음');assert.equal(s.guided.mainIndex,1);assert.equal(s.guided.followups,1);
+ await answer('짧음');assert.equal(s.guided.mainIndex,1);assert.equal(s.guided.followups,2);
+ await answer('짧음');assert.equal(s.guided.mainIndex,2);assert.equal(s.guided.outcomes[0],'followup_limit');
+ await answer('이번 질문은 건너뛰고 싶어요.');assert.equal(s.guided.mainIndex,3);assert.equal(s.guided.outcomes[1],'skipped');
+ await answer('핵심 답변');assert.equal(s.guided.stage,'CLOSING');
+ await answer('정리');assert.equal(s.status,'INTERVIEW_COMPLETED');assert.equal(s.guided.stage,'END');assert.ok(!s.messages.at(-1).text.includes('?'));
+ const before=providerCalls;await next();assert.equal(providerCalls,before);
+ const oldCount=s.answerCount;s=(await call('guided-user','reopenInterview',{sessionId:s.id,expectedRevision:s.revision})).session;
+ await next();assert.equal(s.guided.mainIndex,4);assert.equal(s.guided.target,6);assert.equal(s.answerCount,oldCount);
+});
 test('class owner controls newspaper text while participants can read only their own layout',async()=>{
  const {classRecord:c,code}=await call('teacher','createClass',{title:'신문 설정',classroom:'1',objective:'기사'});
  const {session:s}=await call('layout-student','joinClassByQr',{code,student:{name:'별명',number:1,career:'독서',noticeAccepted:true}});
@@ -94,8 +120,9 @@ test('class QR, ownership, concurrent generation, immutable original, submission
  const duplicate=(await call('intruder','joinClassByQr',{code,student})).session;assert.notEqual(duplicate.id,s.id);
  await assert.rejects(()=>call('intruder','getSession',{sessionId:s.id}));
  const joinId=crypto.randomUUID();const fresh=(await call('student','joinClassByQr',{code,student},joinId)).session;assert.notEqual(fresh.id,s.id);assert.equal((await call('student','joinClassByQr',{code,student},joinId)).session.id,fresh.id);
+ const parallelBaseline=providerCalls;
  const parallel=await Promise.allSettled([call('student','continueInterview',{sessionId:s.id}),call('student','continueInterview',{sessionId:s.id})]);
- assert.ok(parallel.some(x=>x.status==='fulfilled'));assert.equal(providerCalls,1);
+ assert.ok(parallel.some(x=>x.status==='fulfilled'));assert.equal(providerCalls,parallelBaseline+1);
  s=(await call('student','getSession',{sessionId:s.id})).session;
  for(let i=0;i<3;i++){
   const requestId=crypto.randomUUID(),payload={sessionId:s.id,text:'바다를 관찰했습니다.',questionId:s.currentQuestionId,expectedRevision:s.revision};

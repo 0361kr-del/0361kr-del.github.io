@@ -9,9 +9,10 @@ import { randomBytes, createHmac, createHash } from 'node:crypto';
 import { z } from 'zod';
 import { classInput, studentInput, startSession, finishSession, DomainError, type ClassRecord } from '../../shared/domain.js';
 import { reviseArticle, submitArticle, type Article } from '../../shared/article.js';
+import { MAX_GUIDED_ANSWERS } from '../../shared/interview-plan.js';
 import { saveLiveAnswer, attachQuestion, reopenInterview, type LiveSession } from '../../shared/live.js';
 import { aiErrors, safeAiError } from '../../shared/ai-errors.js';
-import { generateWithOpenAI, buildAiRequest } from './openai.js';
+import { generateWithOpenAI, buildAiRequest, guidedResult } from './openai.js';
 
 const key = defineSecret('OPENAI_API_KEY'), pepper = defineSecret('ACCESS_CODE_PEPPER');
 // Real pupils are enabled only after institutional/privacy review. Approved teachers can test the full flow meanwhile.
@@ -102,7 +103,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
     if (s.aiLease && s.aiLease.expiresAt>Date.now()) fail('AI_REQUEST_PENDING');
     const attempts=old.data()?.status==='failed' && old.data()?.code==='AI_UNSUPPORTED_QUOTE'?0:(old.data()?.attempts||0);
     if (attempts>=3) fail('AI_RETRY_LIMIT');
-    const input = { ai:applyAiPolicy(s.settings.ai,globalAi), grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career,  questionLimit:s.answerLimit||s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
+    const input = { ...(s.guided&&s.settings.interviewPlan?{guided:s.guided,interviewPlan:s.settings.interviewPlan}:{}), ai:applyAiPolicy(s.settings.ai,globalAi), grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career,  questionLimit:s.guided?MAX_GUIDED_ANSWERS:s.answerLimit||s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
     const request = buildAiRequest(input);
     // UTF-8 byte count is a conservative input-token reservation for this fixed text model.
     const inputBound = Buffer.byteLength(JSON.stringify(request),'utf8') + 1024;
@@ -111,7 +112,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
     const qr = ref(`liveBudget/${day}`), sq = ref(`liveSessionBudget/${sid}`);
     const [q,t] = await Promise.all([tx.get(qr),tx.get(sq)]);
     const count = q.data()?.count || 0, reserved = q.data()?.reservedMicros || 0, calls = t.data()?.count || 0;
-    if (count>=1500 || reserved+reserveMicros>5000000 || calls>=(s.answerLimit||s.settings.questionLimit)*3+3) throw new HttpsError('resource-exhausted','AI_DAILY_LIMIT');
+    if (count>=1500 || reserved+reserveMicros>5000000 || calls>=(s.guided?MAX_GUIDED_ANSWERS:s.answerLimit||s.settings.questionLimit)*3+3) throw new HttpsError('resource-exhausted','AI_DAILY_LIMIT');
     tx.set(qr,{count:count+1,reservedMicros:reserved+reserveMicros});
     tx.set(sq,{count:calls+1});
     tx.set(job,{token,status:'pending',attempts:attempts+1,createdAt:started,reserveMicros});
@@ -127,7 +128,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
       if (kind==='question') {
         if (!('question' in result.result)) fail('AI_INVALID_OUTPUT');
         const question = [result.result.acknowledgement,result.result.question].filter(Boolean).join('\n');
-        tx.set(sr,attachQuestion(s,uid,s.revision,question,Date.now()));
+        tx.set(sr,attachQuestion(s,uid,s.revision,question,Date.now(),s.guided?guidedResult.parse(result.result):undefined));
       } else {
         if (!('title' in result.result)) fail('AI_INVALID_OUTPUT');
         const r=result.result;
