@@ -18,7 +18,7 @@ export function assertOwner(session: Pick<Session, 'ownerUid' | 'retainUntil'>, 
 export function fixtureQuestion(index: number, career: string, previous = ''): string {
   const questions = [`미래에 ${career}(으)로 일하는 당신은 어떤 일을 하나요?`, '이 일을 하기 위해 어떤 준비를 했나요?', '어려운 일을 만났을 때 어떻게 해결했나요?', '이 일을 하며 가장 보람을 느꼈던 순간은 언제인가요?', '당신의 일이 우리 사회에 어떤 도움을 주나요?', '동료와 함께 해결한 일을 하나 소개해 주세요.', '앞으로 이루고 싶은 목표는 무엇인가요?', '지금의 나에게 해 주고 싶은 말은 무엇인가요?', '이 일에서 중요하게 생각하는 가치는 무엇인가요?', '새로 배우고 싶은 기술은 무엇인가요?', '하루 일과에서 가장 기억에 남는 일은 무엇인가요?', '미래의 동료에게 어떤 조언을 해 주고 싶나요?'];
   const context = previous ? `“${[...previous].slice(0, 35).join('')}${[...previous].length > 35 ? '…' : ''}”라고 이야기했군요. ` : '';
-  return context + questions[index - 1];
+  return context + questions[(index - 1) % questions.length];
 }
 export function startSession(id: string, classRecord: ClassRecord, student: StudentInput, uid: string, now: number): Session {
   return { id, classId: classRecord.id, teacherUid: classRecord.teacherUid, ownerUid: uid, career: student.career, student, settings: classInput.parse(classRecordToInput(classRecord)), status: 'INTERVIEWING', answerCount: 0, revision: 0, currentQuestionId: 'q-1', ownershipEpoch: 0, retainUntil: classRecord.retainUntil, updatedAt: now, messages: [{ id: 'q-1', seq: 1, role: 'reporter', text: fixtureQuestion(1, student.career), createdAt: now }] };

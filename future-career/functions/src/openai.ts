@@ -8,8 +8,8 @@ export const aiPreviewInput = z.object({
   kind: z.enum(['question', 'article']),
   career: z.string().trim().min(1).max(80),
   futureYear: z.number().int().min(2026).max(2100),
-  questionLimit: z.number().int().min(5).max(12),
-  transcript: z.array(z.object({ role:z.enum(['reporter','student']),text:z.string().trim().min(1).max(1000) }).strict()).max(24),
+  questionLimit: z.number().int().min(5).max(24),
+  transcript: z.array(z.object({ role:z.enum(['reporter','student']),text:z.string().trim().min(1).max(1000) }).strict()).max(48),
   fictionalDataConfirmed: z.literal(true),
 }).strict();
 export type AiInput = z.infer<typeof aiPreviewInput>;

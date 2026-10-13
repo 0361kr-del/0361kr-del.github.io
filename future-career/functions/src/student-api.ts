@@ -6,7 +6,7 @@ import { randomBytes, createHmac, createHash } from 'node:crypto';
 import { z } from 'zod';
 import { classInput, studentInput, startSession, finishSession, DomainError, type ClassRecord } from '../../shared/domain.js';
 import { reviseArticle, submitArticle, type Article } from '../../shared/article.js';
-import { saveLiveAnswer, attachQuestion, type LiveSession } from '../../shared/live.js';
+import { saveLiveAnswer, attachQuestion, reopenInterview, type LiveSession } from '../../shared/live.js';
 import { safeAiError } from '../../shared/ai-errors.js';
 import { generateWithOpenAI, buildAiRequest } from './openai.js';
 
@@ -96,7 +96,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
     if (kind==='article' && s.status!=='INTERVIEW_COMPLETED') fail('WRONG_STATE');
     if (s.aiLease && s.aiLease.expiresAt>Date.now()) fail('AI_REQUEST_PENDING');
     if ((old.data()?.attempts || 0)>=3) fail('AI_RETRY_LIMIT');
-    const input = { ai:s.settings.ai, grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career, futureYear:s.settings.futureYear, questionLimit:s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
+    const input = { ai:s.settings.ai, grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career, futureYear:s.settings.futureYear, questionLimit:s.answerLimit||s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
     const request = buildAiRequest(input);
     // UTF-8 byte count is a conservative input-token reservation for this fixed text model.
     const inputBound = Buffer.byteLength(JSON.stringify(request),'utf8') + 1024;
@@ -105,7 +105,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
     const qr = ref(`liveBudget/${day}`), sq = ref(`liveSessionBudget/${sid}`);
     const [q,t] = await Promise.all([tx.get(qr),tx.get(sq)]);
     const count = q.data()?.count || 0, reserved = q.data()?.reservedMicros || 0, calls = t.data()?.count || 0;
-    if (count>=1500 || reserved+reserveMicros>5000000 || calls>=s.settings.questionLimit*3+3) throw new HttpsError('resource-exhausted','AI_DAILY_LIMIT');
+    if (count>=1500 || reserved+reserveMicros>5000000 || calls>=(s.answerLimit||s.settings.questionLimit)*3+3) throw new HttpsError('resource-exhausted','AI_DAILY_LIMIT');
     tx.set(qr,{count:count+1,reservedMicros:reserved+reserveMicros});
     tx.set(sq,{count:calls+1});
     tx.set(job,{token,status:'pending',attempts:(old.data()?.attempts||0)+1,createdAt:started,reserveMicros});
@@ -212,14 +212,14 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
       await generate(sid,uid,method==='continueInterview'?'question':'article');
       return method==='continueInterview'?{session:publicSession(await session(sid,uid,true))}:{article:(await ref(`liveArticles/${sid}`).get()).data()||null};
     }
-    if(['sendAnswer','finishInterview','saveArticle','submitArticle'].includes(method)) {
+    if(['reopenInterview','sendAnswer','finishInterview','saveArticle','submitArticle'].includes(method)) {
       const op=ref(`liveOps/${hash(uid+':'+requestId)}`),fingerprint=createHash('sha256').update(JSON.stringify({method,p})).digest('hex');
       return db().runTransaction(async tx=>{
         const {sr,s}=await txOwned(tx,sid,uid);const prior=(await tx.get(op)).data();
         if(prior){if(prior.fingerprint!==fingerprint)fail('IDEMPOTENCY_CONFLICT');return prior.result;}
         if(s.aiLease && s.aiLease.expiresAt>Date.now())fail('AI_REQUEST_PENDING');
         let result;
-        if(method==='sendAnswer'||method==='finishInterview') {
+        if(method==='reopenInterview'){const next=reopenInterview(s,uid,z.number().int().parse(p.expectedRevision),Date.now());tx.set(sr,next);result={session:publicSession(next)};} else if(method==='sendAnswer'||method==='finishInterview') {
           const {sessionId:_sid,...raw}=p;
           const next=method==='sendAnswer'?saveLiveAnswer(s,raw,uid,Date.now()):{...finishSession(s,uid,z.number().int().parse(p.expectedRevision),Date.now()),awaitingQuestion:false};
           tx.set(sr,next);result={session:publicSession(next)};

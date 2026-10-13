@@ -54,12 +54,26 @@ test('class QR, ownership, concurrent generation, immutable original, submission
  await assert.rejects(()=>call('student','saveArticle',{sessionId:s.id,content,expectedRevision:a.revision}));
  assert.equal((await call('teacher','getArticle',{sessionId:s.id})).article.submitted.title,content.title);
  await assert.rejects(()=>call('intruder','getArticle',{sessionId:s.id}));
+ for(let round=0;round<2;round++){
+  s=(await call('student','getSession',{sessionId:s.id})).session;
+  const req=crypto.randomUUID(),payload={sessionId:s.id,expectedRevision:s.revision};
+  await assert.rejects(()=>call('intruder','reopenInterview',payload));
+  s=(await call('student','reopenInterview',payload,req)).session;
+  assert.equal((await call('student','reopenInterview',payload,req)).session.revision,s.revision);
+  if(s.awaitingQuestion)s=(await call('student','continueInterview',{sessionId:s.id})).session;
+  s=(await call('student','sendAnswer',{sessionId:s.id,text:'추가 답변',questionId:s.currentQuestionId,expectedRevision:s.revision})).session;
+  if(s.status==='INTERVIEWING')s=(await call('student','finishInterview',{sessionId:s.id,expectedRevision:s.revision})).session;
+ }
+ assert.equal(s.answerCount,5);assert.equal(s.continuationCount,2);
+ assert.deepEqual((await call('student','getArticle',{sessionId:s.id})).article.submitted,a.submitted);
+
  const {code:recovery}=await call('teacher','issueRecovery',{sessionId:s.id});
  assert.equal((await call('replacement','redeemRecovery',{code:recovery})).session.id,s.id);
  await assert.rejects(()=>call('student','getSession',{sessionId:s.id}));
  await assert.rejects(()=>call('intruder','redeemRecovery',{code:recovery}));
  assert.equal((await call('replacement','redeemRecovery',{code:recovery})).session.id,s.id);
  await call('teacher','setClassState',{classId:c.id,status:'CLOSED'});
+ await assert.rejects(()=>call('replacement','reopenInterview',{sessionId:s.id,expectedRevision:s.revision}));
  await assert.rejects(()=>call('other','joinClassByQr',{code,student:{...student,number:2}}));
  const unrelated=(await call('teacher','createClass',{title:'유지할 수업',classroom:'4',objective:'진로'})).classRecord;
  await assert.rejects(()=>call('intruder','deleteClass',{classId:c.id,confirm:true}));
