@@ -81,6 +81,7 @@ async function deleteClassData(classId: string, uid: string) {
   return {deleted:true};
 }
 
+function sessionSummary(s:LiveSession) { const {ai:_ai,...settings}=s.settings;return {...publicSession(s),settings,messages:[]}; }
 async function generate(sid: string, uid: string, kind: 'question' | 'article') {
   const initial = await session(sid, uid, true);
   await allowEnrollment(uid, initial.teacherUid);
@@ -161,7 +162,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
       if(method==='updateClassAi'){const ai=aiSettingsSchema.parse(p.ai);await ref(`liveClasses/${c.id}`).update({ai});return {classRecord:{...c,ai}};}
       if(method==='getClassEntry') return {code:(await ref(`liveClasses/${c.id}/private/entry`).get()).data()?.code};
       if(method==='setClassState'){const status=z.enum(['OPEN','CLOSED']).parse(p.status);await ref(`liveClasses/${c.id}`).update({status});return {status};}
-      const q=await db().collection('liveSessions').where('classId','==',c.id).limit(40).get();return {sessions:q.docs.map(d=>publicSession(d.data() as LiveSession))};
+      const q=await db().collection('liveSessions').where('classId','==',c.id).limit(200).get();return {sessions:q.docs.map(d=>sessionSummary(d.data() as LiveSession)).sort((a,b)=>a.student.number-b.student.number||(b.attempt||1)-(a.attempt||1))};
     }
     if(method==='resolveClassEntry'||method==='joinClassByQr') {
       const code=z.string().trim().toUpperCase().regex(/^[A-F0-9]{10}$/).parse(p.code);
@@ -179,7 +180,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
         const current=fresh.data() as ClassRecord;if(!current||current.deleting||current.status!=='OPEN'||current.retainUntil<=Date.now()||current.studentCount>=current.maxStudents)fail('CLASS_UNAVAILABLE');
         if(occupied.exists)fail('NUMBER_ALREADY_JOINED');
         const s:LiveSession={...startSession(sid,current,student,uid,Date.now()),messages:[],currentQuestionId:'',awaitingQuestion:true};
-        tx.create(ref(`liveSessions/${sid}`),s);tx.create(ptr,{sessionId:sid});tx.create(member,{sessionId:sid});tx.update(cr,{studentCount:current.studentCount+1});return {sid};
+        tx.create(ref(`liveSessions/${sid}`),s);tx.create(ptr,{sessionId:sid});tx.create(member,{sessionId:sid,sessionIds:[sid],attemptCount:1});tx.update(cr,{studentCount:current.studentCount+1});return {sid};
       });return {session:publicSession(await session(result.sid,uid,true))};
     }
     if(method==='redeemRecovery') {
@@ -190,20 +191,49 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
         const r=(await tx.get(rr)).data();if(!r||r.expiresAt<=Date.now())denied();
         const sr=ref(`liveSessions/${r.sessionId}`),s=(await tx.get(sr)).data() as LiveSession|undefined;
         if(!s||s.retainUntil<=Date.now())denied();
+        const member=(await tx.get(ref(`liveClasses/${s.classId}/members/${s.student.number}`))).data();if(member?.sessionId!==s.id)fail('USE_LATEST_ATTEMPT');
         if(r.consumedBy){if(r.consumedBy===uid&&s.ownerUid===uid)return s.id;denied();}
         if(s.ownershipEpoch!==r.epoch)denied();if(s.aiLease&&s.aiLease.expiresAt>Date.now())fail('AI_REQUEST_PENDING');
         const c=(await tx.get(ref(`liveClasses/${s.classId}`))).data();if(!c||c.deleting||c.retainUntil<=Date.now())denied();
         const ptr=ref(`liveAccess/${uid}/classes/${s.classId}`),prior=(await tx.get(ptr)).data();if(prior&&prior.sessionId!==s.id)fail('SESSION_EXISTS');
-        tx.update(sr,{ownerUid:uid,ownershipEpoch:s.ownershipEpoch+1,updatedAt:Date.now()});
+        const history=await Promise.all((member.sessionIds||[s.id]).map((value:string)=>tx.get(ref(`liveSessions/${id.parse(value)}`))));
+        for(const doc of history){const old=doc.data() as LiveSession|undefined;if(!old||old.ownerUid!==s.ownerUid||old.classId!==s.classId)denied();if(old.aiLease&&old.aiLease.expiresAt>Date.now())fail('AI_REQUEST_PENDING');}
+        for(const doc of history){const old=doc.data()!;tx.update(doc.ref,{ownerUid:uid,ownershipEpoch:old.ownershipEpoch+1,updatedAt:Date.now()});}
         tx.update(rr,{consumedBy:uid});tx.set(ptr,{sessionId:s.id});
         if(s.ownerUid!==uid)tx.delete(ref(`liveAccess/${s.ownerUid}/classes/${s.classId}`));return s.id;
       });return {session:publicSession(await session(sid,uid,true))};
     }
     if(method==='resume'){const ptr=(await ref(`liveAccess/${uid}/classes/${id.parse(p.classId)}`).get()).data();if(!ptr)denied();return {session:publicSession(await session(ptr.sessionId,uid,true))};}
     const sid=id.parse(p.sessionId);const s=await session(sid,uid);
+    if(method==='listMySessions') {
+      if(s.ownerUid!==uid)denied();
+      const member=(await ref(`liveClasses/${s.classId}/members/${s.student.number}`).get()).data();
+      const ids: string[]=member?.sessionIds||[s.id];
+      const docs=await Promise.all(ids.map(value=>ref(`liveSessions/${id.parse(value)}`).get()));
+      return {sessions:docs.map(d=>d.data() as LiveSession|undefined).filter((v):v is LiveSession=>!!v&&v.ownerUid===uid&&v.classId===s.classId&&v.retainUntil>Date.now()).map(sessionSummary).sort((a,b)=>(b.attempt||1)-(a.attempt||1))};
+    }
+    if(method==='startNewInterview') {
+      if(s.ownerUid!==uid)denied();await allowEnrollment(uid,s.teacherUid);
+      const career=z.string().trim().min(1).max(80).parse(p.career),revision=z.number().int().nonnegative().parse(p.expectedRevision);
+      const nextRef=db().collection('liveSessions').doc(),op=ref(`liveOps/${hash(uid+':'+requestId)}`),fingerprint=createHash('sha256').update(JSON.stringify({method,p})).digest('hex');
+      return db().runTransaction(async tx=>{
+        const {sr,s,c}=await txOwned(tx,sid,uid);
+        const mr=ref(`liveClasses/${c.id}/members/${s.student.number}`),ptr=ref(`liveAccess/${uid}/classes/${c.id}`);
+        const [prior,member,access]=await Promise.all([tx.get(op),tx.get(mr),tx.get(ptr)]);
+        if(prior.exists){if(prior.data()!.fingerprint!==fingerprint)fail('IDEMPOTENCY_CONFLICT');return prior.data()!.result;}
+        if(s.revision!==revision)fail('REVISION_CONFLICT');
+        if(!member.exists||access.data()?.sessionId!==member.data()!.sessionId)denied();
+        if(s.aiLease&&s.aiLease.expiresAt>Date.now())fail('AI_REQUEST_PENDING');
+        const count=member.data()!.attemptCount||1;if(count>=5)fail('ATTEMPT_LIMIT');
+        const next:LiveSession={...startSession(nextRef.id,c,{...s.student,career},uid,Date.now()),attempt:count+1,messages:[],currentQuestionId:'',awaitingQuestion:true};
+        const ids=member.data()!.sessionIds||[member.data()!.sessionId];
+        tx.create(nextRef,next);tx.update(sr,{revision:s.revision+1});tx.set(ptr,{sessionId:next.id});tx.update(mr,{sessionId:next.id,sessionIds:[...ids,next.id],attemptCount:count+1});
+        const result={session:publicSession(next)};tx.create(op,{fingerprint,result});return result;
+      });
+    }
     if(method==='issueRecovery') {
       if(s.teacherUid!==uid)denied();await requireTeacher(uid);
-      const code=randomBytes(24).toString('base64url');await db().runTransaction(async tx=>{const current=(await tx.get(ref(`liveSessions/${s.id}`))).data();const c=(await tx.get(ref(`liveClasses/${s.classId}`))).data();if(!current||!c||c.deleting)denied();tx.create(ref(`liveRecovery/${hash(code)}`),{sessionId:s.id,epoch:current.ownershipEpoch,expiresAt:Date.now()+600000,consumedBy:null});});return {code};
+      const code=randomBytes(24).toString('base64url');await db().runTransaction(async tx=>{const current=(await tx.get(ref(`liveSessions/${s.id}`))).data();const c=(await tx.get(ref(`liveClasses/${s.classId}`))).data();if(!current||!c||c.deleting)denied();const member=(await tx.get(ref(`liveClasses/${s.classId}/members/${s.student.number}`))).data();if(member?.sessionId!==s.id)fail('USE_LATEST_ATTEMPT');tx.create(ref(`liveRecovery/${hash(code)}`),{sessionId:s.id,epoch:current.ownershipEpoch,expiresAt:Date.now()+600000,consumedBy:null});});return {code};
     }
     if(method==='getSession')return {session:publicSession(s)};
     if(method==='getArticle')return {article:(await ref(`liveArticles/${sid}`).get()).data()||null};

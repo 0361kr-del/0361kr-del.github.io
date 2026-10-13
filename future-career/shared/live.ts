@@ -1,5 +1,5 @@
 import { appendAnswer, assertOwner, DomainError, type Session } from './domain.js';
-export type LiveSession = Session & { answerLimit?: number; continuationCount?: number; awaitingQuestion?: boolean; articleState?: 'editing' | 'submitted'; aiLease?: { token: string; expiresAt: number } | null };
+export type LiveSession = Session & { attempt?: number; answerLimit?: number; continuationCount?: number; awaitingQuestion?: boolean; articleState?: 'editing' | 'submitted'; aiLease?: { token: string; expiresAt: number } | null };
 export function saveLiveAnswer(s: LiveSession, raw: unknown, uid: string, now: number): LiveSession {
   if (s.awaitingQuestion || (s.aiLease && s.aiLease.expiresAt > now)) throw new DomainError('AI_REQUEST_PENDING');
   const next = { ...appendAnswer({...s,settings:{...s.settings,questionLimit:s.answerLimit||s.settings.questionLimit}}, raw, uid, now), settings:s.settings };
