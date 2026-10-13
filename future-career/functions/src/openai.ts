@@ -6,7 +6,7 @@ import { aiSettingsSchema, AI_SAFETY_RULES } from '../../shared/ai-settings.js';
 export const aiPreviewInput = z.object({
   ai: aiSettingsSchema.default(() => aiSettingsSchema.parse({})),
   grade:z.number().int().min(1).max(12).default(6),
-  objective:z.string().trim().max(500).default('주제를 탐구하고 자신의 생각을 구체적으로 표현하기'),
+  objective:z.string().trim().max(2000).default('주제를 탐구하고 자신의 생각을 구체적으로 표현하기'),
   guided:guidedSchema.optional(),interviewPlan:interviewPlanSchema.optional(),
   kind: z.enum(['question', 'article']),
   career: z.string().trim().min(1).max(80),

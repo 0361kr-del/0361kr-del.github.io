@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { aiSettingsSchema } from './ai-settings.js';
 
 const text = (max: number) => z.string().transform(v => v.normalize('NFC').trim()).pipe(z.string().min(1).refine(v => [...v].length <= max));
-export const classInput = z.object({ title: text(80), classroom: text(20), grade: z.number().int().min(1).max(12).default(6), maxStudents: z.number().int().min(1).max(40).default(23), questionLimit: z.number().int().min(3).max(12).default(8), futureYear: z.number().int().min(2026).max(2100).optional(), objective: text(500), interviewPlan:interviewPlanSchema.optional(), newspaper:newspaperSchema.optional(), ai: aiSettingsSchema.optional() }).strict();
+export const classInput = z.object({ title: text(80), classroom: text(20), grade: z.number().int().min(1).max(12).default(6), maxStudents: z.number().int().min(1).max(40).default(23), questionLimit: z.number().int().min(3).max(12).default(8), futureYear: z.number().int().min(2026).max(2100).optional(), objective: text(2000), interviewPlan:interviewPlanSchema.optional(), newspaper:newspaperSchema.optional(), ai: aiSettingsSchema.optional() }).strict();
 export const studentInput = z.object({ name: text(40), grade: z.number().int().min(1).max(12), classroom: text(20), number: z.number().int().min(1).max(100), career: text(80), noticeAccepted: z.literal(true) }).strict();
 export const answerInput = z.object({ text: text(1000), questionId: z.string().regex(/^q-\d+$/), expectedRevision: z.number().int().nonnegative() }).strict();
 export const requestIdSchema = z.uuid();

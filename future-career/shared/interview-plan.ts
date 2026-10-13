@@ -1,6 +1,6 @@
 import {z} from 'zod';
 export const interviewPlanSchema=z.object({
- version:z.literal(2),topic:z.string().trim().min(1).max(500),
+ version:z.literal(2),topic:z.string().trim().min(1).max(2000),
  mode:z.enum(['experience','roleplay','inquiry','auto']).default('inquiry'),
  mainCount:z.number().int().min(3).max(10).default(6),
  followupLimit:z.number().int().min(0).max(2).default(2),
