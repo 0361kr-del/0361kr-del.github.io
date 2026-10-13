@@ -10,7 +10,7 @@ export type ClassInput = z.infer<typeof classInput>;
 export type StudentInput = z.infer<typeof studentInput>;
 export type ClassRecord = ClassInput & { id: string; teacherUid: string; status: 'OPEN' | 'CLOSED'; studentCount: number; deleting?: boolean; createdAt: number; retainUntil: number };
 export type Message = { id: string; seq: number; role: 'reporter' | 'student'; text: string; createdAt: number };
-export type Session = { id: string; classId: string; teacherUid: string; ownerUid: string; career: string; student: StudentInput; settings: ClassInput; status: 'INTERVIEWING' | 'INTERVIEW_COMPLETED'; answerCount: number; revision: number; currentQuestionId: string; ownershipEpoch: number; retainUntil: number; updatedAt: number; messages: Message[] };
+export type Session = { id: string; classId: string; teacherUid: string; ownerUid: string; career: string; student: StudentInput; settings: ClassInput; status: 'INTERVIEWING' | 'INTERVIEW_COMPLETED'; answerCount: number; revision: number; currentQuestionId: string; ownershipEpoch: number; retainUntil: number; createdAt?: number; updatedAt: number; messages: Message[] };
 export class DomainError extends Error { constructor(public code: string) { super(code); } }
 export function assertOwner(session: Pick<Session, 'ownerUid' | 'retainUntil'>, uid: string, now: number) { if (session.ownerUid !== uid || session.retainUntil <= now) throw new DomainError('ACCESS_DENIED'); }
 
@@ -21,7 +21,7 @@ export function fixtureQuestion(index: number, career: string, previous = ''): s
   return context + questions[(index - 1) % questions.length];
 }
 export function startSession(id: string, classRecord: ClassRecord, student: StudentInput, uid: string, now: number): Session {
-  return { id, classId: classRecord.id, teacherUid: classRecord.teacherUid, ownerUid: uid, career: student.career, student, settings: classInput.parse(classRecordToInput(classRecord)), status: 'INTERVIEWING', answerCount: 0, revision: 0, currentQuestionId: 'q-1', ownershipEpoch: 0, retainUntil: classRecord.retainUntil, updatedAt: now, messages: [{ id: 'q-1', seq: 1, role: 'reporter', text: fixtureQuestion(1, student.career), createdAt: now }] };
+  return { id, classId: classRecord.id, teacherUid: classRecord.teacherUid, ownerUid: uid, career: student.career, student, settings: classInput.parse(classRecordToInput(classRecord)), status: 'INTERVIEWING', answerCount: 0, revision: 0, currentQuestionId: 'q-1', ownershipEpoch: 0, retainUntil: classRecord.retainUntil, createdAt: now, updatedAt: now, messages: [{ id: 'q-1', seq: 1, role: 'reporter', text: fixtureQuestion(1, student.career), createdAt: now }] };
 }
 export function classRecordToInput(c: ClassRecord): ClassInput { return { title: c.title, classroom: c.classroom, grade: c.grade, maxStudents: c.maxStudents, questionLimit: c.questionLimit, futureYear: c.futureYear, objective: c.objective, ...(c.ai ? { ai:c.ai } : {}) }; }
 export function appendAnswer(s: Session, raw: unknown, uid: string, now: number): Session {

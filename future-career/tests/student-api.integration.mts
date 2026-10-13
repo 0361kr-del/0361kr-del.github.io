@@ -32,8 +32,9 @@ test('class QR, ownership, concurrent generation, immutable original, submission
  const second=(await call('student-two','joinClassByQr',{code,student:{...student,number:2}})).session;
  assert.equal(second.settings.ai.model,'gpt-4.1-mini-2025-04-14');assert.equal(second.settings.ai.interviewSystemPrompt,'새 학생용 본문');
  await assert.rejects(()=>call('intruder','getSession',{sessionId:s.id}));
- await assert.rejects(()=>call('intruder','joinClassByQr',{code,student}));
- assert.equal((await call('student','joinClassByQr',{code,student})).session.id,s.id);
+ const duplicate=(await call('intruder','joinClassByQr',{code,student})).session;assert.notEqual(duplicate.id,s.id);
+ await assert.rejects(()=>call('intruder','getSession',{sessionId:s.id}));
+ const joinId=crypto.randomUUID();const fresh=(await call('student','joinClassByQr',{code,student},joinId)).session;assert.notEqual(fresh.id,s.id);assert.equal((await call('student','joinClassByQr',{code,student},joinId)).session.id,fresh.id);
  const parallel=await Promise.allSettled([call('student','continueInterview',{sessionId:s.id}),call('student','continueInterview',{sessionId:s.id})]);
  assert.ok(parallel.some(x=>x.status==='fulfilled'));assert.equal(providerCalls,1);
  s=(await call('student','getSession',{sessionId:s.id})).session;
@@ -95,7 +96,7 @@ test('class QR, ownership, concurrent generation, immutable original, submission
  assert.equal((await call('teacher','deleteClass',{classId:c.id,confirm:true})).deleted,true);
 
 });
-test('new attempts preserve previous data, membership count and history across recovery',async()=>{
+test('independent activities preserve previous data and recover only the chosen activity',async()=>{
  const {classRecord:c,code}=await call('teacher','createClass',{title:'여러 회차',classroom:'5',objective:'직업 탐구'});
  const {session:first}=await call('attempt-user','joinClassByQr',{code,student:{name:'가상',number:1,career:'연구원',noticeAccepted:true}});
  // Old deployed memberships without the new history fields also migrate correctly.
@@ -110,21 +111,26 @@ test('new attempts preserve previous data, membership count and history across r
  await assert.rejects(()=>call('attempt-user','startNewInterview',payload));
  assert.equal((await call('attempt-user','resume',{classId:c.id})).session.id,next.id);
  assert.deepEqual((await call('attempt-user','getArticle',{sessionId:first.id})).article.submitted,original);
- assert.equal((await db.doc(`liveClasses/${c.id}`).get()).data()!.studentCount,1);
+ assert.equal((await db.doc(`liveClasses/${c.id}`).get()).data()!.studentCount,2);
  assert.equal((await call('teacher','listSessions',{classId:c.id})).sessions.length,2);
  await assert.rejects(()=>call('intruder','listMySessions',{sessionId:first.id}));
  for(let i=3;i<=5;i++)next=(await call('attempt-user','startNewInterview',{sessionId:next.id,career:'직업 '+i,expectedRevision:next.revision})).session;
  assert.equal((await call('attempt-user','listMySessions',{sessionId:next.id})).sessions.length,5);
- await assert.rejects(()=>call('attempt-user','startNewInterview',{sessionId:next.id,career:'추가',expectedRevision:next.revision}),/ATTEMPT_LIMIT/);
- await assert.rejects(()=>call('teacher','issueRecovery',{sessionId:first.id}),/USE_LATEST_ATTEMPT/);
+ next=(await call('attempt-user','startNewInterview',{sessionId:next.id,career:'추가',expectedRevision:next.revision})).session;assert.equal(next.attempt,6);
+ const firstRecovery=await call('teacher','issueRecovery',{sessionId:first.id});assert.ok(firstRecovery.code);
  const recovery=await call('teacher','issueRecovery',{sessionId:next.id});
  await call('attempt-device','redeemRecovery',{code:recovery.code});
- assert.equal((await call('attempt-device','listMySessions',{sessionId:next.id})).sessions.length,5);
- assert.deepEqual((await call('attempt-device','getArticle',{sessionId:first.id})).article.submitted,original);
- await assert.rejects(()=>call('attempt-user','getSession',{sessionId:first.id}));
+ assert.equal((await call('attempt-device','listMySessions',{sessionId:next.id})).sessions.length,1);
+ await assert.rejects(()=>call('attempt-device','getArticle',{sessionId:first.id}));
+ assert.deepEqual((await call('attempt-user','getArticle',{sessionId:first.id})).article.submitted,original);
  await call('teacher','deleteClass',{classId:c.id,confirm:true});
  assert.equal((await db.collection('liveSessions').where('classId','==',c.id).get()).size,0);
  assert.equal((await db.doc(`liveArticles/${first.id}`).get()).exists,false);
+});
+test('reference numbers and legacy capacity never restrict entry',async()=>{
+ const {classRecord:c,code}=await call('teacher','createClass',{title:'정원 없음',classroom:'1',objective:'탐구',maxStudents:1});
+ for(let i=0;i<3;i++)assert.ok((await call('capacity-'+i,'joinClassByQr',{code,student:{name:'별명',number:99,career:'연구원',noticeAccepted:true}})).session.id);
+ assert.equal((await call('teacher','listSessions',{classId:c.id})).sessions.length,3);
 });
 test('daily budget refuses a provider call before any paid request',async()=>{
  const {code}=await call('teacher','createClass',{title:'예산 시험',classroom:'3',objective:'가상 시험'});

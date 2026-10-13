@@ -119,10 +119,8 @@ function mock(method: string, p: Record<string, unknown>): unknown {
   if (method === 'resolveClassEntry') { const c = classes.find(c => c.id === codes.get(String(p.code).trim().toUpperCase())); if (!c || c.status !== 'OPEN' || c.retainUntil <= Date.now()) throw new Error('CLASS_UNAVAILABLE'); return { classInfo: { id:c.id, title:c.title, grade:c.grade, classroom:c.classroom, maxStudents:c.maxStudents } }; }
   if (method === 'joinClassByQr') {
     const c = classes.find(c => c.id === codes.get(String(p.code).trim().toUpperCase()));
-    if (!c || c.status !== 'OPEN' || c.retainUntil <= Date.now() || c.studentCount >= c.maxStudents) throw new Error('CLASS_UNAVAILABLE');
+    if (!c || c.status !== 'OPEN' || c.retainUntil <= Date.now()) throw new Error('CLASS_UNAVAILABLE');
     const student = studentInput.parse({ ...(p.student as object), grade:c.grade, classroom:c.classroom });
-    if (student.number > c.maxStudents) throw new Error('STUDENT_CLASS_MISMATCH');
-    if ([...sessions.values()].some(s => s.classId===c.id && s.student.number===student.number)) throw new Error('NUMBER_ALREADY_JOINED');
     const session = startSession(crypto.randomUUID(),c,student,'demo-student',Date.now()); sessions.set(session.id,session); c.studentCount++; return { session };
   }
   if (method === 'teacherStatus') return { active: demoTeacher };
@@ -135,8 +133,8 @@ function mock(method: string, p: Record<string, unknown>): unknown {
   if(method==='listMySessions'){const current=sessions.get(String(p.sessionId));if(!current)throw new Error('SESSION_NOT_FOUND');return {sessions:[...sessions.values()].filter(s=>s.ownerUid===current.ownerUid&&s.classId===current.classId&&s.student.number===current.student.number).sort((a,b)=>(b.attempt||1)-(a.attempt||1))};}
   if(method==='startNewInterview'){
     const old=sessions.get(String(p.sessionId));if(!old)throw new Error('SESSION_NOT_FOUND');const c=classes.find(c=>c.id===old.classId);if(!c||c.status!=='OPEN')throw new Error('CLASS_UNAVAILABLE');if(old.revision!==p.expectedRevision)throw new Error('REVISION_CONFLICT');
-    const count=[...sessions.values()].filter(s=>s.classId===old.classId&&s.student.number===old.student.number).length;if(count>=5)throw new Error('ATTEMPT_LIMIT');
-    const student=studentInput.parse({...old.student,career:p.career});const next:Session={...startSession(crypto.randomUUID(),c,student,old.ownerUid,Date.now()),attempt:count+1};sessions.set(old.id,{...old,revision:old.revision+1});sessions.set(next.id,next);return {session:next};
+    const count=[...sessions.values()].filter(s=>s.classId===old.classId&&s.student.number===old.student.number).length;
+    const student=studentInput.parse({...old.student,career:p.career});const next:Session={...startSession(crypto.randomUUID(),c,student,old.ownerUid,Date.now()),attempt:count+1};sessions.set(old.id,{...old,revision:old.revision+1});sessions.set(next.id,next);c.studentCount++;return {session:next};
   }
   if (method === 'getSession') { const session = sessions.get(String(p.sessionId)); if (!session) throw new Error('SESSION_NOT_FOUND'); return { session }; }
   if(method==='reopenInterview'){const s=sessions.get(String(p.sessionId));if(!s)throw new Error('SESSION_NOT_FOUND');let next=reopenInterview(s,'demo-student',Number(p.expectedRevision),Date.now());if(next.awaitingQuestion){const q={id:`q-${s.answerCount+1}`,seq:s.messages.length+1,role:'reporter' as const,text:fixtureQuestion((s.answerCount%12)+1,s.career),createdAt:Date.now()};next={...next,messages:[...next.messages,q],currentQuestionId:q.id,awaitingQuestion:false};}sessions.set(s.id,next);return {session:next};}
