@@ -23,7 +23,15 @@ test('server request disables storage and carries context without identity field
 test('valid structured question is parsed; key is only in authorization header',async()=>{let calls=0;const fetcher=async(url:unknown,init:RequestInit|undefined)=>{calls++;assert.equal(url,'https://api.openai.com/v1/responses');assert.equal((init?.headers as Record<string,string>).Authorization,'Bearer test-only');assert.ok(!String(init?.body).includes('test-only'));return response({acknowledgement:'산호를 관찰하는군요.',question:'관찰 중 어려웠던 일은 무엇인가요?'});};const result=await generateWithOpenAI(request(),'test-only',fetcher as typeof fetch);assert.equal(result.kind,'question');assert.equal(calls,1);});
 test('contact data rejected before any provider request',async()=>{const p=request();p.transcript[0].text='전화 010-1234-5678';let calls=0;await assert.rejects(()=>generateWithOpenAI(p,'test-only',(async()=>{calls++;return response({});}) as typeof fetch),/PERSONAL_DATA_DETECTED/);assert.equal(calls,0);});
 test('invalid key and rate limits fail safely without response body leaks or automatic retries',async()=>{for(const [status,code] of [[401,'AI_KEY_INVALID'],[429,'AI_RATE_LIMIT']] as const){let calls=0;await assert.rejects(()=>generateWithOpenAI(request(),'test-only',(async()=>{calls++;return new Response('sensitive-provider-error',{status});}) as typeof fetch),new RegExp(code));assert.equal(calls,1);}});
-test('unfounded article quotations and truncated output are rejected',async()=>{const p=request();p.kind='article';p.transcript=[{role:'student',text:'바다를 연구해요.'},{role:'student',text:'수영을 배웠어요.'},{role:'student',text:'동료와 해결했어요.'}];await assert.rejects(()=>generateWithOpenAI(p,'test-only',(async()=>response({title:'제목',subtitle:'부제',body:'가상 기사',quotes:['대상을 수상했습니다.']})) as typeof fetch),/AI_UNSUPPORTED_QUOTE/);await assert.rejects(()=>generateWithOpenAI(request(),'test-only',(async()=>response({},'incomplete')) as typeof fetch),/AI_INCOMPLETE/);});
+test('article keeps exact student quotes, omits unsupported quotes and never retries the provider',async()=>{
+ const p=request();p.kind='article';p.transcript=[{role:'student',text:'바다를 연구해요.'},{role:'student',text:'수영을 배웠어요.'},{role:'student',text:'동료와 해결했어요.'},{role:'reporter',text:'기자만 한 말'}];
+ let calls=0;
+ const out=await generateWithOpenAI(p,'test-only',(async()=>{calls++;return response({title:'제목',subtitle:'부제',body:'가상 기사',quotes:['대상을 수상했습니다.','바다를 연구해요.','기자만 한 말']});}) as typeof fetch);
+ assert.ok('quotes' in out.result);if('quotes' in out.result)assert.deepEqual(out.result.quotes,['바다를 연구해요.']);assert.equal(calls,1);
+ const empty=await generateWithOpenAI(p,'test-only',(async()=>response({title:'제목',subtitle:'',body:'기사 본문',quotes:['지어낸 인용']})) as typeof fetch);
+ if('quotes' in empty.result)assert.deepEqual(empty.result.quotes,[]);
+ await assert.rejects(()=>generateWithOpenAI(request(),'test-only',(async()=>response({},'incomplete')) as typeof fetch),/AI_INCOMPLETE/);
+});
 test('teacher configuration selects allowlisted model while retaining fixed safety and bounded output',()=>{
  const configured={...request(),grade:6,objective:'환경과 직업',ai:{model:'gpt-5.4-mini-2026-03-17',tone:'차분한 기자',interviewInstructions:'환경 보호 경험을 물어봐 주세요.',articleInstructions:'사회 기여를 정리해 주세요.'}};
  const body=buildAiRequest(configured);

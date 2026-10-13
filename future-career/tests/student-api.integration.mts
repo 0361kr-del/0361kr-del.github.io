@@ -13,7 +13,7 @@ globalThis.fetch=(async(url,init)=>{
   if(String(url)!=='https://api.openai.com/v1/responses')throw new Error('Unexpected external request');
   providerCalls++;const body=JSON.parse(String(init?.body));
   assert.equal(body.model,'gpt-5.4-mini-2026-03-17');assert.deepEqual(body.reasoning,{effort:'none'});assert.ok(body.instructions.startsWith(body.text.format.name==='interview_question'?'저장된 인터뷰 본문':'저장된 기사 본문'));
-  const result=body.text.format.name==='interview_question'?{acknowledgement:'알겠습니다.',question:'어떤 경험을 했나요?'}:{title:'미래의 일',subtitle:'가상 인터뷰',body:'[미래 직업 가상 인터뷰] 바다를 관찰했다.',quotes:[]};
+  const result=body.text.format.name==='interview_question'?{acknowledgement:'알겠습니다.',question:'어떤 경험을 했나요?'}:{title:'미래의 일',subtitle:'가상 인터뷰',body:'[교육용 AI 인터뷰] 바다를 관찰했다.',quotes:['없는 수상 경력을 지어냈습니다.','바다를 관찰했습니다.']};
   return new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(result)}]}],usage:{input_tokens:100,output_tokens:50}}));
 }) as typeof fetch;
 const call=(uid:string,method:string,payload:Record<string,unknown>={},requestId=crypto.randomUUID())=>studentApi.run({auth:{uid,token:{}},data:{method,payload,requestId},rawRequest:{},app:{appId:'test'}} as never) as Promise<any>;
@@ -90,8 +90,10 @@ test('class QR, ownership, concurrent generation, immutable original, submission
   if(i<2)s=(await call('student','continueInterview',{sessionId:s.id})).session;
  }
  s=(await call('student','finishInterview',{sessionId:s.id,expectedRevision:s.revision})).session;
+ await db.doc(`liveAiJobs/${s.id}-article`).set({status:'failed',code:'AI_UNSUPPORTED_QUOTE',attempts:3});
  let {article:a}=await call('student','generateArticle',{sessionId:s.id});const beforeCalls=providerCalls;
  assert.deepEqual((await call('student','generateArticle',{sessionId:s.id})).article.original,a.original);assert.equal(providerCalls,beforeCalls);
+ assert.ok(!a.original.body.includes('없는 수상'));assert.ok(a.original.body.includes('“바다를 관찰했습니다.”'));
  const original=a.original,content={...a.edited,title:'내가 수정한 제목'};
  a=(await call('student','saveArticle',{sessionId:s.id,content,expectedRevision:a.revision})).article;
  assert.deepEqual(a.original,original);

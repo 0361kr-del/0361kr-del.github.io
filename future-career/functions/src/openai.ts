@@ -29,7 +29,7 @@ export function buildAiRequest(raw: unknown) {
   const instruction = input.kind==='question' ? input.ai.interviewSystemPrompt : input.ai.articleSystemPrompt;
   const contract = input.kind==='question'
     ? '출력 형식: acknowledgement는 180자 이하, question은 한 번에 하나의 질문으로 400자 이하입니다.'
-    : '출력 형식: title 120자 이하, subtitle 200자 이하, body 8000자 이하입니다. 교육용 AI 인터뷰를 바탕으로 작성했음을 표시하고 역할극이나 상상 내용은 사실로 단정하지 않습니다. quotes는 학생 답변에서 정확히 발췌한 인용 0~3개만 담습니다.';
+    : '출력 형식: title 120자 이하, subtitle 200자 이하, body 8000자 이하입니다. 교육용 AI 인터뷰를 바탕으로 작성했음을 표시하고 역할극이나 상상 내용은 사실로 단정하지 않습니다. body에는 직접 인용을 넣지 않습니다. quotes는 학생 답변에서 철자와 문장부호까지 정확히 발췌한 인용 0~3개만 담습니다. 표현을 고쳐 쓰지 말고 정확한 인용이 없으면 빈 배열을 반환합니다.';
   return { model:input.ai.model,...(input.ai.model.startsWith('gpt-5')?{reasoning:{effort:'none' as const}}:{}),store:false,instructions:instruction+'\n'+AI_SAFETY_RULES+'\n'+contract+'\n수업 수준: '+input.grade+'학년. 말투: '+input.ai.tone+'\n교사 교육 설정(JSON): '+JSON.stringify({objective:input.objective,additional:input.kind==='question'?input.ai.interviewInstructions:input.ai.articleInstructions}),input:JSON.stringify({topicOrRole:input.career,questionLimit:input.questionLimit,transcript:input.transcript}),max_output_tokens:input.kind==='question'?500:2200,text:{format:{type:'json_schema',name:input.kind==='question'?'interview_question':'interview_article',strict:true,schema:schemas[input.kind]}} };
 }
 export async function generateWithOpenAI(raw: unknown, apiKey: string, fetcher: typeof fetch=fetch) {
@@ -52,6 +52,7 @@ export async function generateWithOpenAI(raw: unknown, apiKey: string, fetcher: 
   const checked=input.kind==='question'?questionResult.safeParse(parsed):articleResult.safeParse(parsed);
   if(!checked.success) throw new Error('AI_INVALID_OUTPUT');
   const result=checked.data;
-  if('quotes' in result && result.quotes.some(q=>!input.transcript.some(t=>t.role==='student'&&t.text.includes(q)))) throw new Error('AI_UNSUPPORTED_QUOTE');
+  // Quotes are optional: keep exact student excerpts only, without failing the entire draft or paying for a retry.
+  if('quotes' in result) result.quotes=result.quotes.filter(q=>input.transcript.some(t=>t.role==='student'&&t.text.includes(q)));
   return {kind:input.kind,result,durationMs:Date.now()-startedAt,usage:data.usage?{inputTokens:data.usage.input_tokens,outputTokens:data.usage.output_tokens}:null,model:body.model};
 }

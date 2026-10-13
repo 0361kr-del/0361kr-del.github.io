@@ -99,7 +99,8 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
     if (s.revision!==initial.revision) fail('REVISION_CONFLICT');
     if (kind==='article' && s.status!=='INTERVIEW_COMPLETED') fail('WRONG_STATE');
     if (s.aiLease && s.aiLease.expiresAt>Date.now()) fail('AI_REQUEST_PENDING');
-    if ((old.data()?.attempts || 0)>=3) fail('AI_RETRY_LIMIT');
+    const attempts=old.data()?.status==='failed' && old.data()?.code==='AI_UNSUPPORTED_QUOTE'?0:(old.data()?.attempts||0);
+    if (attempts>=3) fail('AI_RETRY_LIMIT');
     const input = { ai:applyAiPolicy(s.settings.ai,globalAi), grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career,  questionLimit:s.answerLimit||s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
     const request = buildAiRequest(input);
     // UTF-8 byte count is a conservative input-token reservation for this fixed text model.
@@ -112,7 +113,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
     if (count>=1500 || reserved+reserveMicros>5000000 || calls>=(s.answerLimit||s.settings.questionLimit)*3+3) throw new HttpsError('resource-exhausted','AI_DAILY_LIMIT');
     tx.set(qr,{count:count+1,reservedMicros:reserved+reserveMicros});
     tx.set(sq,{count:calls+1});
-    tx.set(job,{token,status:'pending',attempts:(old.data()?.attempts||0)+1,createdAt:started,reserveMicros});
+    tx.set(job,{token,status:'pending',attempts:attempts+1,createdAt:started,reserveMicros});
     tx.update(sr,{aiLease:{token,expiresAt:started+90000}});
     return {cached:false,s,input};
   });
