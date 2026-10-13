@@ -1,3 +1,4 @@
+import { newspaperSchema } from '../shared/newspaper';
 import { reopenInterview, type LiveSession as Session } from '../shared/live';
 import { aiSettingsSchema } from '../shared/ai-settings';
 import { initializeApp } from 'firebase/app';
@@ -111,7 +112,7 @@ function mock(method: string, p: Record<string, unknown>): unknown {
   if (method === 'previewSummary') return { submitted: [...articles.values()].filter(a => a.submitted).map(a => a.sessionId), editing: [...articles.keys()] };
   if (method === 'previewResume') { const session = [...sessions.values()].filter(s => !s.id.startsWith('sample-')).sort((a,b) => b.updatedAt-a.updatedAt)[0]; return { session: session || null }; }
 
-  const teacherOnly = ['deleteClass','updateClassAi','createClass', 'listClasses', 'listSessions', 'issueAdmission', 'setClassState', 'issueRecovery', 'getClassEntry'];
+  const teacherOnly = ['updateNewspaper','deleteClass','updateClassAi','createClass', 'listClasses', 'listSessions', 'issueAdmission', 'setClassState', 'issueRecovery', 'getClassEntry'];
   if (teacherOnly.includes(method) && !demoTeacher) throw new Error('ACCESS_DENIED');
   if (method === 'deleteClass') { if(p.confirm!==true)throw new Error('ACCESS_DENIED'); const i=classes.findIndex(c=>c.id===p.classId);if(i>=0)classes.splice(i,1);for(const [sid,s] of sessions)if(s.classId===p.classId){sessions.delete(sid);articles.delete(sid);}for(const [code,cid] of codes)if(cid===p.classId)codes.delete(code);for(const [token,a] of admissions)if(a.classId===p.classId)admissions.delete(token);return {deleted:true}; }
   if (method === 'updateClassAi') { const c=classes.find(c=>c.id===p.classId); if(!c)throw new Error('CLASS_UNAVAILABLE');c.ai=aiSettingsSchema.parse(p.ai);return {classRecord:c}; }
@@ -124,6 +125,8 @@ function mock(method: string, p: Record<string, unknown>): unknown {
     const session = startSession(crypto.randomUUID(),c,student,'demo-student',Date.now()); sessions.set(session.id,session); c.studentCount++; return { session };
   }
   if (method === 'getGlobalAi') return {ai:aiSettingsSchema.parse({})};
+  if(method==='updateNewspaper'){const c=classes.find(c=>c.id===p.classId);if(!c)throw new Error('CLASS_UNAVAILABLE');c.newspaper=newspaperSchema.parse(p.newspaper);return {classRecord:c};}
+  if(method==='getNewspaper'){const s=sessions.get(String(p.sessionId));const c=classes.find(c=>c.id===s?.classId);if(!c)throw new Error('CLASS_UNAVAILABLE');return {newspaper:newspaperSchema.parse(c.newspaper||{})};}
   if (method === 'teacherStatus') return { active: demoTeacher };
   if (method === 'listClasses') return { classes: [...classes] };
   if (method === 'createClass') { const input = classInput.parse(p); const c: ClassRecord = { ...input, id: crypto.randomUUID(), teacherUid: 'demo-teacher', status: 'OPEN', studentCount: 0, createdAt: Date.now(), retainUntil: now + 90 * 86400000 }; const code = crypto.randomUUID().slice(0, 8).toUpperCase(); classes.push(c); codes.set(code, c.id); return { classRecord: c, code }; }

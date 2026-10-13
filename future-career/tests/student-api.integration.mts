@@ -19,6 +19,20 @@ globalThis.fetch=(async(url,init)=>{
 const call=(uid:string,method:string,payload:Record<string,unknown>={},requestId=crypto.randomUUID())=>studentApi.run({auth:{uid,token:{}},data:{method,payload,requestId},rawRequest:{},app:{appId:'test'}} as never) as Promise<any>;
 before(async()=>{await db.doc('teachers/teacher').set({active:true});await db.doc('siteConfig/ai').set({ai:{model:'gpt-5.4-mini-2026-03-17',interviewSystemPrompt:'저장된 인터뷰 본문',articleSystemPrompt:'저장된 기사 본문'}});});
 after(async()=>{globalThis.fetch=originalFetch;await db.terminate();await deleteApp(app);});
+test('class owner controls newspaper text while participants can read only their own layout',async()=>{
+ const {classRecord:c,code}=await call('teacher','createClass',{title:'신문 설정',classroom:'1',objective:'기사'});
+ const {session:s}=await call('layout-student','joinClassByQr',{code,student:{name:'별명',number:1,career:'독서',noticeAccepted:true}});
+ assert.equal((await call('layout-student','getNewspaper',{sessionId:s.id})).newspaper.title,'남산 뉴스');
+ const newspaper={title:'우리 반 소식',label:'AI 인터뷰',footer:'함께 쓴 이야기'};
+ await assert.rejects(()=>call('layout-student','updateNewspaper',{classId:c.id,newspaper}));
+ await db.doc('teachers/other-layout-teacher').set({active:true});
+ await assert.rejects(()=>call('other-layout-teacher','updateNewspaper',{classId:c.id,newspaper}));
+ await assert.rejects(()=>call('other-layout-teacher','getNewspaper',{sessionId:s.id}));
+ await call('teacher','updateNewspaper',{classId:c.id,newspaper});
+ assert.deepEqual((await call('layout-student','getNewspaper',{sessionId:s.id})).newspaper,newspaper);
+ await assert.rejects(()=>call('teacher','updateNewspaper',{classId:c.id,newspaper:{...newspaper,title:''}}));
+ assert.equal((await call('layout-student','getSession',{sessionId:s.id})).session.revision,s.revision);
+});
 test('legacy bundled defaults upgrade without overwriting owner customization',async()=>{
  const {getGlobalAi}=await import('../functions/src/ai-policy.ts');
  const {LEGACY_INTERVIEW_PROMPT,LEGACY_ARTICLE_PROMPT}=await import('../shared/legacy-ai-defaults.ts');

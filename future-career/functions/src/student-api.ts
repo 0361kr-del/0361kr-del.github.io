@@ -1,3 +1,4 @@
+import { newspaperSchema } from '../../shared/newspaper.js';
 import { getGlobalAi, applyAiPolicy, saveGlobalAi, isSiteOwner } from './ai-policy.js';
 import { enrollGoogleTeacher } from './teacher-access.js';
 import { aiSettingsSchema, AI_MODELS } from '../../shared/ai-settings.js';
@@ -163,8 +164,9 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
       return db().runTransaction(async tx=>{const prior=(await tx.get(op)).data();if(prior){if(prior.fingerprint!==fingerprint)fail('IDEMPOTENCY_CONFLICT');return prior.result;}const result={classRecord:c,code};tx.create(cRef,c);tx.create(ref(`liveCodes/${hash(code)}`),{classId:c.id});tx.create(ref(`liveClasses/${c.id}/private/entry`),{code});tx.create(op,{fingerprint,result});return result;});
     }
     if(method==='listClasses') {await requireTeacher(uid);const q=await db().collection('liveClasses').where('teacherUid','==',uid).limit(100).get();return {classes:q.docs.map(d=>d.data()).filter(c=>c.retainUntil>Date.now()).sort((a,b)=>(b.createdAt||b.updatedAt)-(a.createdAt||a.updatedAt))};}
-    if(method==='updateClassAi'||method==='getClassEntry'||method==='setClassState'||method==='listSessions') {
+    if(method==='updateNewspaper'||method==='updateClassAi'||method==='getClassEntry'||method==='setClassState'||method==='listSessions') {
       await requireTeacher(uid);const c=await readClass(id.parse(p.classId),uid);
+      if(method==='updateNewspaper'){const newspaper=newspaperSchema.parse(p.newspaper);await ref(`liveClasses/${c.id}`).update({newspaper});return {classRecord:{...c,newspaper}};}
       if(method==='updateClassAi'){const ai=applyAiPolicy(p.ai,await getGlobalAi());await ref(`liveClasses/${c.id}`).update({ai});return {classRecord:{...c,ai}};}
       if(method==='getClassEntry') return {code:(await ref(`liveClasses/${c.id}/private/entry`).get()).data()?.code};
       if(method==='setClassState'){const status=z.enum(['OPEN','CLOSED']).parse(p.status);await ref(`liveClasses/${c.id}`).update({status});return {status};}
@@ -234,6 +236,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
       if(s.teacherUid!==uid)denied();await requireTeacher(uid);
       const code=randomBytes(24).toString('base64url');await db().runTransaction(async tx=>{const current=(await tx.get(ref(`liveSessions/${s.id}`))).data();const c=(await tx.get(ref(`liveClasses/${s.classId}`))).data();if(!current||!c||c.deleting)denied();tx.create(ref(`liveRecovery/${hash(code)}`),{sessionId:s.id,epoch:current.ownershipEpoch,expiresAt:Date.now()+600000,consumedBy:null});});return {code};
     }
+    if(method==='getNewspaper'){const c=await readClass(s.classId);return {newspaper:newspaperSchema.parse(c.newspaper||{})};}
     if(method==='getSession')return {session:publicSession(s)};
     if(method==='getArticle')return {article:(await ref(`liveArticles/${sid}`).get()).data()||null};
     if(method==='continueInterview'||method==='generateArticle') {

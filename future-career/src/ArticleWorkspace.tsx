@@ -1,9 +1,11 @@
+import { activityTime, defaultNewspaper, type NewspaperLayout } from '../shared/newspaper';
 import React, { useEffect, useRef, useState } from 'react';
 import type { Session } from '../shared/domain';
 import type { Article, ArticleText } from '../shared/article';
 import { call, errorText, storageAvailable, demo } from './service';
 
 export function ArticleWorkspace({ session, teacher, onBack }: { session: Session; teacher: boolean; onBack: () => void }) {
+  const [newspaper,setNewspaper]=useState(defaultNewspaper);
   const [article, setArticle] = useState<Article | null>(null);
   const current = useRef<Article | null>(null);
   const [form, setForm] = useState<ArticleText>({ title: '', subtitle: '', body: '' });
@@ -17,7 +19,8 @@ export function ArticleWorkspace({ session, teacher, onBack }: { session: Sessio
   const submitted = Boolean(article?.submitted);
   const key = `career-article-${session.id}`;
   useEffect(() => {
-    let alive = true;
+    let alive = true;setNewspaper(defaultNewspaper());
+    call<{newspaper:NewspaperLayout}>('getNewspaper',{sessionId:session.id}).then(r=>{if(alive)setNewspaper(r.newspaper);}).catch(e=>{if(alive)setError(errorText(e));});
     call<{ article: Article | null }>(teacher || !demo ? 'getArticle' : 'generateArticle', { sessionId: session.id }).then(({ article: a }) => {
       if (!alive) return;
       current.current = a; setArticle(a);
@@ -61,7 +64,7 @@ export function ArticleWorkspace({ session, teacher, onBack }: { session: Sessio
     } catch (e) { setError(errorText(e)); } finally { setBusy(false); }
   }
   async function back() { clearTimeout(timer.current); try { if (!teacher && !submitted) await save(form); onBack(); } catch(e) { setError(errorText(e)); } }
-  const paper = (content: ArticleText, label?: string) => <article className="article-paper"><div className="paper-top">THE INTERVIEW TIMES <span>AI INTERVIEW</span></div><div className="paper-meta"><span>AI 인터뷰 · 나의 기사</span><span>{label || `${session.student.name} 기자`}</span></div><h1>{content.title}</h1>{content.subtitle && <p className="article-subtitle">{content.subtitle}</p>}<div className="article-body">{content.body}</div><div className="paper-bottom">인터뷰로 만난 생각, 나의 언어로 쓴 이야기</div></article>;
+  const paper = (content: ArticleText, _label?: string) => <article className="article-paper"><div className="paper-top">{newspaper.title}</div><div className="paper-meta"><time>활동 작성 시각 · {activityTime(session)}</time></div><h1>{content.title}</h1>{content.subtitle && <p className="article-subtitle">{content.subtitle}</p>}<div className="article-body">{content.body}</div><div className="paper-bottom newspaper-footer"><span>{newspaper.footer}</span><span className="newspaper-label">{newspaper.label}</span></div></article>;
   return <section className="article-workspace"><div className="workspace-heading"><div><p className="eyebrow">03 · 나만의 기사 완성하기</p><h1>{submitted ? '나의 인터뷰 신문' : teacher ? '원본과 수정본 살펴보기' : '당신의 이야기, 당신의 문장으로'}</h1></div><button className="secondary" onClick={back}>← {teacher ? '교사 작업실' : '인터뷰 보기'}</button></div>
     <p className="muted">{demo ? '연습용 문장 틀로 만든 초안입니다.' : 'AI가 쓴 초안입니다. 인터뷰와 다른 내용이 있는지 확인하고 직접 고쳐 주세요.'}</p>
     {error && <div className="error" role="alert">{error}</div>}

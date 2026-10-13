@@ -13,3 +13,6 @@ Only pinned owner UID hUNsenuelrOlOqvHmYITwpoX2jx2 can save siteConfig/ai throug
 
 ## General AI interviews — 2026-10-13
 Branding and new class creation now use general AI interviews and topic/role input. Year controls and fixed year text were removed from live and preview UIs and article print layout. Legacy career field names remain for record compatibility; OpenAI receives topicOrRole and no futureYear even for legacy inputs. New class/session settings do not inject a default year. Old documents and completed articles are not rewritten. Bundled-default system prompts generalize to reading, experiences, inquiry and roleplay; exact legacy defaults are upgraded at read time while owner-customized prompts remain unchanged.
+
+## Class newspaper text
+Teachers can update their own class newspaper title, lower-right label and centered footer. Defaults are 남산 뉴스 / AI 인터뷰 / 인터뷰로 만난 생각, 나의 언어로 쓴 이야기. Readers obtain layout through session authorization; article contents are not modified. Existing articles use current class layout on reopening. Activity time uses immutable session creation time in Asia/Seoul, or first saved message for legacy sessions; no fabricated timestamp fallback.
