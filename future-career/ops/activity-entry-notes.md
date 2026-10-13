@@ -7,3 +7,6 @@ An activity URL restores that activity after reload, subject to authenticated ow
 Update: Google test enrollment is now open. A verified Google sign-in automatically creates an active teachers/{uid} record on teacher login or AI preview access. Existing inactive records remain blocked. Anonymous and other-provider accounts cannot self-enroll. Each teacher can manage only their own classes; project API budgets and request limits remain enforced. No email/name is copied into enrollment records.
 
 Validation: frontend/functions builds, 31 unit tests, 14 Firestore emulator tests, including duplicate reference numbers beyond legacy capacity, join retry idempotency, independent recovery, previous article preservation, ownership denial and deletion.
+
+## Owner AI policy — 2026-10-13
+Only pinned owner UID hUNsenuelrOlOqvHmYITwpoX2jx2 can save siteConfig/ai through the callable. Teachers may edit tone and interview/article supplemental guidance. Server class create/update and both live generation and AI preview replace client/snapshot model and system prompts with current global policy. Legacy session content remains unchanged; the next AI generation uses current owner policy. Absent global configuration uses bundled defaults. Changing global configuration does not regenerate existing articles. Direct client Firestore writes remain denied.

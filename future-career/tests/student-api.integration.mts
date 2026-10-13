@@ -17,8 +17,23 @@ globalThis.fetch=(async(url,init)=>{
   return new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(result)}]}],usage:{input_tokens:100,output_tokens:50}}));
 }) as typeof fetch;
 const call=(uid:string,method:string,payload:Record<string,unknown>={},requestId=crypto.randomUUID())=>studentApi.run({auth:{uid,token:{}},data:{method,payload,requestId},rawRequest:{},app:{appId:'test'}} as never) as Promise<any>;
-before(async()=>{await db.doc('teachers/teacher').set({active:true});});
+before(async()=>{await db.doc('teachers/teacher').set({active:true});await db.doc('siteConfig/ai').set({ai:{model:'gpt-5.4-mini-2026-03-17',interviewSystemPrompt:'저장된 인터뷰 본문',articleSystemPrompt:'저장된 기사 본문'}});});
 after(async()=>{globalThis.fetch=originalFetch;await db.terminate();await deleteApp(app);});
+test('only the pinned owner changes global AI policy; class tampering cannot override it',async()=>{
+ const {OWNER_UID}=await import('../functions/src/ai-policy.ts');
+ await db.doc(`teachers/${OWNER_UID}`).set({active:true});
+ const original=(await call('teacher','getGlobalAi')).ai;
+ await assert.rejects(()=>call('teacher','saveGlobalAi',{ai:original}));
+ await assert.rejects(()=>call('anonymous-new','getGlobalAi'));
+ const policy={...original,interviewSystemPrompt:'소유자 정책'};
+ assert.equal((await call(OWNER_UID,'saveGlobalAi',{ai:policy})).ai.interviewSystemPrompt,'소유자 정책');
+ const malicious={...original,model:'gpt-4.1-mini-2025-04-14',interviewSystemPrompt:'임의 교사 정책',interviewInstructions:'우주 직업을 탐구'};
+ const c=(await call('teacher','createClass',{title:'정책 검증',classroom:'1',objective:'탐구',ai:malicious})).classRecord;
+ assert.equal(c.ai.interviewSystemPrompt,'소유자 정책');assert.equal(c.ai.model,policy.model);assert.equal(c.ai.interviewInstructions,malicious.interviewInstructions);
+ const updated=(await call('teacher','updateClassAi',{classId:c.id,ai:malicious})).classRecord;
+ assert.equal(updated.ai.interviewSystemPrompt,'소유자 정책');
+ await call(OWNER_UID,'saveGlobalAi',{ai:original});
+});
 test('verified Google teachers enroll once, own only their classes and cannot undo suspension',async()=>{
  const {enrollGoogleTeacher}=await import('../functions/src/teacher-access.ts');
  const google={firebase:{sign_in_provider:'google.com'},email_verified:true};
@@ -48,7 +63,7 @@ test('class QR, ownership, concurrent generation, immutable original, submission
  await call('teacher','updateClassAi',{classId:c.id,ai:{...ai,model:'gpt-4.1-mini-2025-04-14',interviewSystemPrompt:'새 학생용 본문'}});
  assert.equal((await call('student','getSession',{sessionId:s.id})).session.settings.ai.model,ai.model);
  const second=(await call('student-two','joinClassByQr',{code,student:{...student,number:2}})).session;
- assert.equal(second.settings.ai.model,'gpt-4.1-mini-2025-04-14');assert.equal(second.settings.ai.interviewSystemPrompt,'새 학생용 본문');
+ assert.equal(second.settings.ai.model,ai.model);assert.equal(second.settings.ai.interviewSystemPrompt,ai.interviewSystemPrompt);
  await assert.rejects(()=>call('intruder','getSession',{sessionId:s.id}));
  const duplicate=(await call('intruder','joinClassByQr',{code,student})).session;assert.notEqual(duplicate.id,s.id);
  await assert.rejects(()=>call('intruder','getSession',{sessionId:s.id}));

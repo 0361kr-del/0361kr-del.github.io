@@ -1,3 +1,4 @@
+import { getGlobalAi, applyAiPolicy } from './ai-policy.js';
 import { enrollGoogleTeacher } from './teacher-access.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineBoolean } from 'firebase-functions/params';
@@ -16,6 +17,7 @@ export const aiPreview=onCall({region:'asia-northeast3',invoker:'public',secrets
   if(!enabled.value()) throw new HttpsError('failed-precondition','AI_PREVIEW_NOT_ENABLED');
   let input: z.infer<typeof aiPreviewInput>,requestId:string;
   try { const data=z.object({requestId:z.uuid(),input:aiPreviewInput}).strict().parse(request.data);input=data.input;requestId=data.requestId; } catch {throw new HttpsError('invalid-argument','INVALID_INPUT');}
+  input.ai=applyAiPolicy(input.ai,await getGlobalAi());
   const fingerprint=createHash('sha256').update(JSON.stringify(input)).digest('hex');
   const op=db.doc(`aiPreviewOperations/${createHash('sha256').update(uid+':'+requestId).digest('hex')}`);
   const day=new Date().toISOString().slice(0,10),userCounter=db.doc(`aiPreviewQuotas/${day}-${uid}`),globalCounter=db.doc(`aiPreviewQuotas/${day}-project`);

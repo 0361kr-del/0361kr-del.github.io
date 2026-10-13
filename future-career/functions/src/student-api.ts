@@ -1,3 +1,4 @@
+import { getGlobalAi, applyAiPolicy, saveGlobalAi, isSiteOwner } from './ai-policy.js';
 import { enrollGoogleTeacher } from './teacher-access.js';
 import { aiSettingsSchema, AI_MODELS } from '../../shared/ai-settings.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
@@ -88,6 +89,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
   await allowEnrollment(uid, initial.teacherUid);
   const job = ref(`liveAiJobs/${sid}-${kind}-${kind==='question'?initial.answerCount:0}`);
   const ar = ref(`liveArticles/${sid}`), token = randomBytes(16).toString('hex');
+  const globalAi = await getGlobalAi();
   const started = Date.now();
   const reservation = await db().runTransaction(async tx => {
     const {sr,s} = await txOwned(tx,sid,uid);
@@ -98,7 +100,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
     if (kind==='article' && s.status!=='INTERVIEW_COMPLETED') fail('WRONG_STATE');
     if (s.aiLease && s.aiLease.expiresAt>Date.now()) fail('AI_REQUEST_PENDING');
     if ((old.data()?.attempts || 0)>=3) fail('AI_RETRY_LIMIT');
-    const input = { ai:s.settings.ai, grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career, futureYear:s.settings.futureYear, questionLimit:s.answerLimit||s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
+    const input = { ai:applyAiPolicy(s.settings.ai,globalAi), grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career, futureYear:s.settings.futureYear, questionLimit:s.answerLimit||s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
     const request = buildAiRequest(input);
     // UTF-8 byte count is a conservative input-token reservation for this fixed text model.
     const inputBound = Buffer.byteLength(JSON.stringify(request),'utf8') + 1024;
@@ -149,9 +151,11 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
     const {method,payload:p,requestId}=z.object({method:z.string(),payload:z.record(z.string(),z.unknown()),requestId:z.uuid()}).strict().parse(request.data);
     await rate(uid);
     if(method==='deleteClass'){if(p.confirm!==true)fail('INVALID_INPUT');return await deleteClassData(id.parse(p.classId),uid);}
-    if(method==='teacherStatus') return {active:await enrollGoogleTeacher(uid,request.auth.token)};
+    if(method==='teacherStatus') return {active:await enrollGoogleTeacher(uid,request.auth.token),isOwner:isSiteOwner(uid)};
+    if(method==='getGlobalAi'){await requireTeacher(uid);return {ai:await getGlobalAi()};}
+    if(method==='saveGlobalAi'){await requireTeacher(uid);return {ai:await saveGlobalAi(uid,p.ai)};}
     if(method==='createClass') {
-      await requireTeacher(uid);const input=classInput.parse(p);
+      await requireTeacher(uid);const input=classInput.parse(p);input.ai=applyAiPolicy(input.ai,await getGlobalAi());
       const cRef=db().collection('liveClasses').doc(), code=randomBytes(5).toString('hex').toUpperCase();
       const c:ClassRecord={...input,id:cRef.id,teacherUid:uid,status:'OPEN',studentCount:0,createdAt:Date.now(),retainUntil:Date.now()+90*86400000};
       const op=ref(`liveOps/${hash(uid+':'+requestId)}`),fingerprint=createHash('sha256').update(JSON.stringify(p)).digest('hex');
@@ -160,7 +164,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
     if(method==='listClasses') {await requireTeacher(uid);const q=await db().collection('liveClasses').where('teacherUid','==',uid).limit(100).get();return {classes:q.docs.map(d=>d.data()).filter(c=>c.retainUntil>Date.now()).sort((a,b)=>(b.createdAt||b.updatedAt)-(a.createdAt||a.updatedAt))};}
     if(method==='updateClassAi'||method==='getClassEntry'||method==='setClassState'||method==='listSessions') {
       await requireTeacher(uid);const c=await readClass(id.parse(p.classId),uid);
-      if(method==='updateClassAi'){const ai=aiSettingsSchema.parse(p.ai);await ref(`liveClasses/${c.id}`).update({ai});return {classRecord:{...c,ai}};}
+      if(method==='updateClassAi'){const ai=applyAiPolicy(p.ai,await getGlobalAi());await ref(`liveClasses/${c.id}`).update({ai});return {classRecord:{...c,ai}};}
       if(method==='getClassEntry') return {code:(await ref(`liveClasses/${c.id}/private/entry`).get()).data()?.code};
       if(method==='setClassState'){const status=z.enum(['OPEN','CLOSED']).parse(p.status);await ref(`liveClasses/${c.id}`).update({status});return {status};}
       const q=await db().collection('liveSessions').where('classId','==',c.id).get();return {sessions:q.docs.map(d=>sessionSummary(d.data() as LiveSession)).sort((a,b)=>a.student.number-b.student.number||(b.attempt||1)-(a.attempt||1))};

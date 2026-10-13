@@ -123,6 +123,7 @@ function mock(method: string, p: Record<string, unknown>): unknown {
     const student = studentInput.parse({ ...(p.student as object), grade:c.grade, classroom:c.classroom });
     const session = startSession(crypto.randomUUID(),c,student,'demo-student',Date.now()); sessions.set(session.id,session); c.studentCount++; return { session };
   }
+  if (method === 'getGlobalAi') return {ai:aiSettingsSchema.parse({})};
   if (method === 'teacherStatus') return { active: demoTeacher };
   if (method === 'listClasses') return { classes: [...classes] };
   if (method === 'createClass') { const input = classInput.parse(p); const c: ClassRecord = { ...input, id: crypto.randomUUID(), teacherUid: 'demo-teacher', status: 'OPEN', studentCount: 0, createdAt: Date.now(), retainUntil: now + 90 * 86400000 }; const code = crypto.randomUUID().slice(0, 8).toUpperCase(); classes.push(c); codes.set(code, c.id); return { classRecord: c, code }; }
