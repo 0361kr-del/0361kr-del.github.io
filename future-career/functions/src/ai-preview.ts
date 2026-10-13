@@ -1,3 +1,4 @@
+import { enrollGoogleTeacher } from './teacher-access.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineBoolean } from 'firebase-functions/params';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -11,7 +12,7 @@ const enabled=defineBoolean('OPENAI_TEACHER_PREVIEW_ENABLED',{default:false});
 export const aiPreview=onCall({region:'asia-northeast3',invoker:'public',secrets:[key],enforceAppCheck:true,maxInstances:2,concurrency:10,timeoutSeconds:60,memory:'256MiB'},async request=>{
   if(!request.auth) throw new HttpsError('unauthenticated','AUTH_REQUIRED');
   const uid=request.auth.uid,db=getFirestore();
-  if(!(await db.doc(`teachers/${uid}`).get()).data()?.active) throw new HttpsError('permission-denied','ACCESS_DENIED');
+  if(!await enrollGoogleTeacher(uid,request.auth.token)) throw new HttpsError('permission-denied','ACCESS_DENIED');
   if(!enabled.value()) throw new HttpsError('failed-precondition','AI_PREVIEW_NOT_ENABLED');
   let input: z.infer<typeof aiPreviewInput>,requestId:string;
   try { const data=z.object({requestId:z.uuid(),input:aiPreviewInput}).strict().parse(request.data);input=data.input;requestId=data.requestId; } catch {throw new HttpsError('invalid-argument','INVALID_INPUT');}

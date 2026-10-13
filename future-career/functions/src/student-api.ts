@@ -1,3 +1,4 @@
+import { enrollGoogleTeacher } from './teacher-access.js';
 import { aiSettingsSchema, AI_MODELS } from '../../shared/ai-settings.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineBoolean, defineSecret } from 'firebase-functions/params';
@@ -148,7 +149,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
     const {method,payload:p,requestId}=z.object({method:z.string(),payload:z.record(z.string(),z.unknown()),requestId:z.uuid()}).strict().parse(request.data);
     await rate(uid);
     if(method==='deleteClass'){if(p.confirm!==true)fail('INVALID_INPUT');return await deleteClassData(id.parse(p.classId),uid);}
-    if(method==='teacherStatus') return {active:await activeTeacher(uid)};
+    if(method==='teacherStatus') return {active:await enrollGoogleTeacher(uid,request.auth.token)};
     if(method==='createClass') {
       await requireTeacher(uid);const input=classInput.parse(p);
       const cRef=db().collection('liveClasses').doc(), code=randomBytes(5).toString('hex').toUpperCase();

@@ -26,7 +26,7 @@ function explain(error: unknown) {
   const e = error as { code?: string; message?: string };
   const text = `${e.code || ''} ${e.message || ''}`;
   if (e.message && Object.hasOwn(aiErrors, e.message)) return `${aiErrors[e.message]} (진단 코드: ${e.message})`;
-  if (/ACCESS_DENIED|permission-denied/.test(text)) return '교사 계정 승인이 필요합니다. 아래 로그인 UID를 확인하고 관리자 승인 후 다시 시도하세요.';
+  if (/ACCESS_DENIED|permission-denied/.test(text)) return '이 계정은 교사 기능을 사용할 수 없습니다. 확인된 Google 계정으로 로그인하거나 운영자에게 문의하세요.';
   if (/appCheck|app-check|unauthenticated/i.test(text)) return '앱 인증을 확인하지 못했습니다. App Check 등록과 사이트 도메인 설정을 확인하세요.';
   if (/unauthorized-domain/.test(text)) return 'Firebase Authentication의 승인된 도메인에 현재 사이트 주소를 등록해야 합니다.';
   if (/popup-closed|cancelled-popup/.test(text)) return '로그인 창이 닫혔습니다. 다시 로그인할 수 있습니다.';
@@ -79,7 +79,7 @@ export function AiTrial() {
       <p className="muted">교사별 하루 최대 30회 · 프로젝트 전체 하루 최대 100회 · OpenAI 사용료 발생</p>
       {error && <div className="error" role="alert">{error}</div>}
       {!user ? <button disabled={busy} onClick={() => run(async () => { const auth = await connect(); const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' }); setUser((await signInWithPopup(auth, provider)).user); })}>Google로 교사 로그인</button> : <div className="credential">
-        <p>로그인: {user.email}</p><p style={{ overflowWrap: 'anywhere' }}>교사 승인용 UID: <code>{user.uid}</code></p>
+        <p>로그인: {user.email}</p><p style={{ overflowWrap: 'anywhere' }}>로그인 계정 ID: <code>{user.uid}</code></p>
         <button className="quiet" disabled={busy} onClick={() => run(async () => { await signOut(await connect()); setUser(null); setMessages([]); setArticle(null); setAnswer(''); setConfirmed(false); setUsage(null); })}>로그아웃</button>
       </div>}
       {user && <>

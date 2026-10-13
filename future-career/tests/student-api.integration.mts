@@ -19,6 +19,24 @@ globalThis.fetch=(async(url,init)=>{
 const call=(uid:string,method:string,payload:Record<string,unknown>={},requestId=crypto.randomUUID())=>studentApi.run({auth:{uid,token:{}},data:{method,payload,requestId},rawRequest:{},app:{appId:'test'}} as never) as Promise<any>;
 before(async()=>{await db.doc('teachers/teacher').set({active:true});});
 after(async()=>{globalThis.fetch=originalFetch;await db.terminate();await deleteApp(app);});
+test('verified Google teachers enroll once, own only their classes and cannot undo suspension',async()=>{
+ const {enrollGoogleTeacher}=await import('../functions/src/teacher-access.ts');
+ const google={firebase:{sign_in_provider:'google.com'},email_verified:true};
+ assert.equal(await enrollGoogleTeacher('anonymous-new',{firebase:{sign_in_provider:'anonymous'}}),false);
+ assert.equal(await enrollGoogleTeacher('unverified-new',{...google,email_verified:false}),false);
+ assert.equal(await enrollGoogleTeacher('password-new',{...google,firebase:{sign_in_provider:'password'}}),false);
+ assert.equal((await db.doc('teachers/anonymous-new').get()).exists,false);
+ const results=await Promise.all([enrollGoogleTeacher('google-new',google),enrollGoogleTeacher('google-new',google)]);assert.deepEqual(results,[true,true]);
+ const c=(await call('google-new','createClass',{title:'동료 교사',classroom:'2',objective:'테스트'})).classRecord;
+ assert.ok((await call('google-new','listClasses')).classes.some((v:any)=>v.id===c.id));
+ assert.equal((await call('teacher','listClasses')).classes.some((v:any)=>v.id===c.id),false);
+ await assert.rejects(()=>call('teacher','listSessions',{classId:c.id}));
+ await db.doc('teachers/google-new').update({active:false});
+ assert.equal(await enrollGoogleTeacher('google-new',google),false);
+ await assert.rejects(()=>call('google-new','createClass',{title:'차단',classroom:'2',objective:'테스트'}));
+ const enrolled=await studentApi.run({auth:{uid:'google-callable',token:google},data:{method:'teacherStatus',payload:{},requestId:crypto.randomUUID()},rawRequest:{},app:{appId:'test'}} as never) as any;
+ assert.equal(enrolled.active,true);
+});
 test('class QR, ownership, concurrent generation, immutable original, submission and closed class',async()=>{
  const {classRecord:c,code}=await call('teacher','createClass',{title:'가상 수업',classroom:'1',objective:'진로 탐색',questionLimit:5});
  const student={name:'가상별명',number:1,career:'바다 연구원',noticeAccepted:true};
