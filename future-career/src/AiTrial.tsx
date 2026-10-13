@@ -1,9 +1,9 @@
 import { AiSettingsFields } from './AiSettings';
 import { defaultAiSettings } from '../shared/ai-settings';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { aiErrors } from '../shared/ai-errors';
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserSessionPersistence, type User } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence, type User } from 'firebase/auth';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
@@ -16,7 +16,7 @@ function connect() {
     const app = initializeApp({ apiKey: import.meta.env.VITE_FIREBASE_API_KEY, projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID, authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, appId: import.meta.env.VITE_FIREBASE_APP_ID }, 'teacher-ai-trial');
     initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(import.meta.env.VITE_APPCHECK_SITE_KEY), isTokenAutoRefreshEnabled: true });
     const auth = getAuth(app);
-    await setPersistence(auth, browserSessionPersistence);
+    await setPersistence(auth, browserLocalPersistence);
     await auth.authStateReady();
     return auth;
   })();
@@ -45,6 +45,7 @@ export function AiTrial() {
   const [user, setUser] = useState<User | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const lock = useRef(false);
+  useEffect(() => { let alive = true; connect().then(auth => { if (alive) setUser(auth.currentUser); }).catch(e => { if (alive) setError(explain(e)); }); return () => { alive = false; }; }, []);
   const [career, setCareer] = useState('해양 생태 연구원');
   const [confirmed, setConfirmed] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);

@@ -3,7 +3,7 @@ import { newspaperSchema } from '../shared/newspaper';
 import { attachQuestion,saveLiveAnswer,reopenInterview, type LiveSession as Session } from '../shared/live';
 import { aiSettingsSchema } from '../shared/ai-settings';
 import { initializeApp } from 'firebase/app';
-import { getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInAnonymously, signInWithPopup, GoogleAuthProvider, signOut, connectAuthEmulator } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence, signInAnonymously, signInWithPopup, GoogleAuthProvider, signOut, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { appendAnswer, fixtureQuestion, classInput, finishSession, startSession, studentInput, type ClassRecord } from '../shared/domain';
@@ -35,7 +35,7 @@ async function setup() {
 export async function login(teacher = false) {
   if (demo) { demoTeacher = teacher; return; }
   await setup();
-  if (teacher) { await setPersistence(auth!,browserSessionPersistence);await signInWithPopup(auth!, new GoogleAuthProvider()); }
+  if (teacher) { await setPersistence(auth!,browserLocalPersistence);if (!auth!.currentUser || auth!.currentUser.isAnonymous) await signInWithPopup(auth!, new GoogleAuthProvider()); }
   else if (!auth!.currentUser) { await setPersistence(auth!,browserLocalPersistence);await signInAnonymously(auth!); }
   else if(auth!.currentUser.isAnonymous) await setPersistence(auth!,browserLocalPersistence);
 }
