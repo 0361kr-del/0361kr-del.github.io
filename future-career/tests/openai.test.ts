@@ -62,3 +62,9 @@ test('general interview accepts no year and never sends a legacy year to AI',()=
  assert.equal('futureYear' in JSON.parse(buildAiRequest(request()).input),false);
  assert.ok(body.instructions.includes('독서'));assert.ok(!body.instructions.includes('미래 직업 역할극이라는 점을 유지'));
 });
+
+test('GPT-6 Luna is opt-in and retains low-latency structured output contract',()=>{
+ const body=buildAiRequest({...request(),ai:{model:'gpt-6-luna'}});
+ assert.equal(body.model,'gpt-6-luna');assert.deepEqual(body.reasoning,{effort:'none'});assert.equal(body.store,false);assert.equal(body.text.format.strict,true);
+ assert.equal(buildAiRequest(request()).model,'gpt-4.1-mini-2025-04-14');
+});

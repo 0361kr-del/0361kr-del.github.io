@@ -5,7 +5,7 @@ export function AiSettingsFields({value,onChange,disabled=false,advanced=false}:
  const rate=AI_MODELS[value.model];
  return <fieldset disabled={disabled}><legend>AI 기자 설정</legend>
  {advanced && <><label>모델<select value={value.model} onChange={e=>onChange({...value,model:e.target.value as AiSettings['model']})}>{Object.entries(AI_MODELS).map(([id,m])=><option key={id} value={id}>{m.label}</option>)}</select></label>
- <p className="muted">100만 토큰당 입력 ${rate.input} / 출력 ${rate.output} · 실제 요금은 사용량에 따라 달라집니다. GPT-5.4 mini는 추론을 끈 응답 설정을 사용합니다. 계정별 사용 가능 여부와 속도는 교사 시험에서 확인하세요.</p>
+ <p className="muted">100만 토큰당 입력 ${rate.input} / 출력 ${rate.output} · 실제 요금은 사용량에 따라 달라집니다. GPT-5.4 mini와 GPT-6 Luna는 추론을 끈 응답 설정을 사용합니다. 계정별 사용 가능 여부와 속도는 교사 시험에서 확인하세요.</p>
  </>}{!advanced && <label>기자 말투<select value={value.tone} onChange={e=>onChange({...value,tone:e.target.value as AiSettings['tone']})}>{['친절한 기자','차분한 기자','호기심 많은 기자'].map(t=><option key={t}>{t}</option>)}</select></label>}
  {advanced && <><label>인터뷰 시스템 프롬프트 · 직접 수정<textarea maxLength={6000} rows={12} value={value.interviewSystemPrompt} onChange={e=>onChange({...value,interviewSystemPrompt:e.target.value})} required/></label>
  <button type="button" className="quiet" onClick={()=>{if(confirm('인터뷰 시스템 프롬프트를 기본값으로 복원할까요?'))onChange({...value,interviewSystemPrompt:DEFAULT_INTERVIEW_PROMPT});}}>인터뷰 프롬프트 기본값 복원</button>
