@@ -28,8 +28,8 @@ before(async()=>{await db.doc('teachers/teacher').set({active:true});await db.do
 after(async()=>{globalThis.fetch=originalFetch;await db.terminate();await deleteApp(app);});
 test('guided flow saves answers once, holds main count on followup and closes without another question',async()=>{
  const plan={version:2,topic:'책 속 인물의 선택을 살펴보는 수업입니다. '+ '인물의 생각과 나의 생각을 비교해요. '.repeat(12),mode:'auto',mainCount:3,followupLimit:2,questions:[],articleFocus:'생각'};
- const {code}=await call('teacher','createClass',{title:'보충 질문',classroom:'1',objective:'생각 표현',questionLimit:3,interviewPlan:plan});
- const entry=await call('guided-user','resolveClassEntry',{code});assert.equal(entry.classInfo.description,plan.topic.trim());assert.equal(entry.classInfo.ai,undefined);
+ const {code}=await call('teacher','createClass',{title:'보충 질문',entryQuestion:'어떤 인물로 인터뷰할까요?',classroom:'1',objective:'생각 표현',questionLimit:3,interviewPlan:plan});
+ const entry=await call('guided-user','resolveClassEntry',{code});assert.equal(entry.classInfo.description,plan.topic.trim());assert.equal(entry.classInfo.ai,undefined);assert.equal(entry.classInfo.entryQuestion,'어떤 인물로 인터뷰할까요?');
  let s=(await call('guided-user','joinClassByQr',{code,student:{name:'별명',number:1,career:'책 속 인물',noticeAccepted:true}})).session;
  const next=async()=>{s=(await call('guided-user','continueInterview',{sessionId:s.id})).session;};
  const answer=async(text:string)=>{const id=crypto.randomUUID(),payload={sessionId:s.id,text,questionId:s.currentQuestionId,expectedRevision:s.revision};s=(await call('guided-user','sendAnswer',payload,id)).session;assert.equal((await call('guided-user','sendAnswer',payload,id)).session.answerCount,s.answerCount);await next();};

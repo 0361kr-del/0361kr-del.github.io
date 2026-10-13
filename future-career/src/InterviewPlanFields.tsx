@@ -4,6 +4,7 @@ export function InterviewPlanFields({value,onChange}:{value:InterviewPlan;onChan
  return <fieldset><legend>인터뷰 수업 설계</legend>
  <label>어떤 수업인가요?<textarea required rows={8} maxLength={2000} value={value.topic} placeholder="예: 환경 문제를 배우고 해결 방법을 생각하는 수업입니다. 환경을 지키는 사람의 역할을 맡아 어떤 일을 하고 왜 필요한지 인터뷰합니다." onChange={e=>onChange({...value,topic:e.target.value,mode:'auto'})}/></label>
  <p className="muted">학생 입장 화면에도 그대로 표시됩니다. 수업 상황, 알아볼 내용, 맡을 역할을 학생에게 설명하듯 적어 주세요. {value.topic.length}/2,000</p>
+ <label>학생에게 물어볼 질문<input name="entryQuestion" maxLength={200} placeholder="예: 당신의 직업은 무엇입니까?"/></label><p className="muted">학생이 입장할 때 역할·주제를 입력하는 칸 위에 표시됩니다. 비워 두면 기본 질문을 사용합니다.</p>
  <label>주요 질문 수<input type="number" min={3} max={10} value={value.mainCount} onChange={e=>onChange({...value,mainCount:Number(e.target.value)})}/></label>
  <p className="muted">도입·마무리는 주요 질문 수에 포함하지 않습니다. 짧은 답변도 핵심에 답했다면 다음 질문으로 넘어갑니다.</p>
  <details><summary>세부 설정 · 질문과 기사 방향</summary>

@@ -103,7 +103,7 @@ async function generate(sid: string, uid: string, kind: 'question' | 'article') 
     if (s.aiLease && s.aiLease.expiresAt>Date.now()) fail('AI_REQUEST_PENDING');
     const attempts=old.data()?.status==='failed' && old.data()?.code==='AI_UNSUPPORTED_QUOTE'?0:(old.data()?.attempts||0);
     if (attempts>=3) fail('AI_RETRY_LIMIT');
-    const input = { ...(s.guided&&s.settings.interviewPlan?{guided:s.guided,interviewPlan:s.settings.interviewPlan}:{}), ai:applyAiPolicy(s.settings.ai,globalAi), grade:s.settings.grade, objective:s.settings.objective, kind, career:s.career,  questionLimit:s.guided?MAX_GUIDED_ANSWERS:s.answerLimit||s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
+    const input = { ...(s.guided&&s.settings.interviewPlan?{guided:s.guided,interviewPlan:s.settings.interviewPlan}:{}), ai:applyAiPolicy(s.settings.ai,globalAi), grade:s.settings.grade, objective:s.settings.objective, ...(s.settings.entryQuestion?{entryQuestion:s.settings.entryQuestion}:{}), kind, career:s.career,  questionLimit:s.guided?MAX_GUIDED_ANSWERS:s.answerLimit||s.settings.questionLimit, transcript:s.messages.map(m=>({role:m.role,text:m.text})), fictionalDataConfirmed:true as const };
     const request = buildAiRequest(input);
     // UTF-8 byte count is a conservative input-token reservation for this fixed text model.
     const inputBound = Buffer.byteLength(JSON.stringify(request),'utf8') + 1024;
@@ -177,7 +177,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
       const code=z.string().trim().toUpperCase().regex(/^[A-F0-9]{10}$/).parse(p.code);
       const entry=(await ref(`liveCodes/${hash(code)}`).get()).data();if(!entry)denied();
       const c=await readClass(entry.classId);await requireTeacher(c.teacherUid);if(c.status!=='OPEN')fail('CLASS_UNAVAILABLE');
-      if(method==='resolveClassEntry')return {classInfo:{id:c.id,title:c.title,grade:c.grade,classroom:c.classroom,maxStudents:c.maxStudents,description:c.interviewPlan?.topic||c.objective,teacherOnly:!launched.value()}};
+      if(method==='resolveClassEntry')return {classInfo:{id:c.id,title:c.title,grade:c.grade,classroom:c.classroom,maxStudents:c.maxStudents,entryQuestion:c.entryQuestion||'어떤 역할로, 또는 어떤 주제로 이야기하고 싶나요?',description:c.interviewPlan?.topic||c.objective,teacherOnly:!launched.value()}};
       await allowEnrollment(uid,c.teacherUid);
       const student=studentInput.parse({...studentInput.omit({grade:true,classroom:true}).parse(p.student),grade:c.grade,classroom:c.classroom});
       const sid=db().collection('liveSessions').doc().id;

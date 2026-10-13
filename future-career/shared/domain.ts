@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { aiSettingsSchema } from './ai-settings.js';
 
 const text = (max: number) => z.string().transform(v => v.normalize('NFC').trim()).pipe(z.string().min(1).refine(v => [...v].length <= max));
-export const classInput = z.object({ title: text(80), classroom: text(20), grade: z.number().int().min(1).max(12).default(6), maxStudents: z.number().int().min(1).max(40).default(23), questionLimit: z.number().int().min(3).max(12).default(8), futureYear: z.number().int().min(2026).max(2100).optional(), objective: text(2000), interviewPlan:interviewPlanSchema.optional(), newspaper:newspaperSchema.optional(), ai: aiSettingsSchema.optional() }).strict();
+export const classInput = z.object({ title: text(80), classroom: text(20), grade: z.number().int().min(1).max(12).default(6), maxStudents: z.number().int().min(1).max(40).default(23), questionLimit: z.number().int().min(3).max(12).default(8), futureYear: z.number().int().min(2026).max(2100).optional(), objective: text(2000), entryQuestion: text(200).optional(), interviewPlan:interviewPlanSchema.optional(), newspaper:newspaperSchema.optional(), ai: aiSettingsSchema.optional() }).strict();
 export const studentInput = z.object({ name: text(40), grade: z.number().int().min(1).max(12), classroom: text(20), number: z.number().int().min(1).max(100), career: text(80), noticeAccepted: z.literal(true) }).strict();
 export const answerInput = z.object({ text: text(1000), questionId: z.string().regex(/^q-\d+$/), expectedRevision: z.number().int().nonnegative() }).strict();
 export const requestIdSchema = z.uuid();
@@ -25,7 +25,7 @@ export function fixtureQuestion(index: number, career: string, previous = ''): s
 export function startSession(id: string, classRecord: ClassRecord, student: StudentInput, uid: string, now: number): Session {
   return { ...(classRecord.interviewPlan?{guided:startGuided(classRecord.interviewPlan)}:{}), id, classId: classRecord.id, teacherUid: classRecord.teacherUid, ownerUid: uid, career: student.career, student, settings: classInput.parse(classRecordToInput(classRecord)), status: 'INTERVIEWING', answerCount: 0, revision: 0, currentQuestionId: 'q-1', ownershipEpoch: 0, retainUntil: classRecord.retainUntil, createdAt: now, updatedAt: now, messages: [{ id: 'q-1', seq: 1, role: 'reporter', text: fixtureQuestion(1, student.career), createdAt: now }] };
 }
-export function classRecordToInput(c: ClassRecord): ClassInput { return { title: c.title, classroom: c.classroom, grade: c.grade, maxStudents: c.maxStudents, questionLimit: c.questionLimit, objective: c.objective, ...(c.interviewPlan?{interviewPlan:c.interviewPlan}:{}), ...(c.ai ? { ai:c.ai } : {}) }; }
+export function classRecordToInput(c: ClassRecord): ClassInput { return { title: c.title, classroom: c.classroom, grade: c.grade, maxStudents: c.maxStudents, questionLimit: c.questionLimit, objective: c.objective, ...(c.entryQuestion?{entryQuestion:c.entryQuestion}:{}), ...(c.interviewPlan?{interviewPlan:c.interviewPlan}:{}), ...(c.ai ? { ai:c.ai } : {}) }; }
 export function appendAnswer(s: Session, raw: unknown, uid: string, now: number): Session {
   assertOwner(s, uid, now);
   const a = answerInput.parse(raw);
