@@ -1,0 +1,17 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { appendAnswer, classInput, finishSession, startSession, studentInput, type ClassRecord } from '../shared/domain.ts';
+const now = Date.now();
+const c: ClassRecord = { ...classInput.parse({ title: '6학년 1반', classroom: '1', objective: '진로 탐구' }), id: 'class1', teacherUid: 'teacher1', status: 'OPEN', studentCount: 0, createdAt: now, retainUntil: now + 1000000 };
+const student = studentInput.parse({ name: '가상학생', grade: 6, classroom: '1', number: 1, career: '연구원', noticeAccepted: true });
+const fresh = () => startSession('session1', c, student, 'student1', now);
+test('class size defaults to 23 and question count to 8', () => { assert.equal(c.maxStudents, 23); assert.equal(c.questionLimit, 8); });
+test('rejects privilege fields in student payload', () => assert.throws(() => studentInput.parse({ ...student, ownerUid: 'attacker' })));
+test('rejects whitespace only and long answers', () => { for (const text of ['  ', '가'.repeat(1001)]) assert.throws(() => appendAnswer(fresh(), { text, questionId: 'q-1', expectedRevision: 0 }, 'student1', now)); });
+test('denies another student', () => assert.throws(() => appendAnswer(fresh(), { text: '답변', questionId: 'q-1', expectedRevision: 0 }, 'other', now), /ACCESS_DENIED/));
+test('denies expired session', () => assert.throws(() => appendAnswer(fresh(), { text: '답변', questionId: 'q-1', expectedRevision: 0 }, 'student1', c.retainUntil), /ACCESS_DENIED/));
+test('rejects stale revision and wrong question', () => { for (const a of [{ text: '답변', questionId: 'q-1', expectedRevision: 1 }, { text: '답변', questionId: 'q-2', expectedRevision: 0 }]) assert.throws(() => appendAnswer(fresh(), a, 'student1', now), /REVISION_CONFLICT/); });
+test('stops after exactly eight answers with no ninth question', () => { let s = fresh(); for (let n = 0; n < 8; n++) s = appendAnswer(s, { text: `미래 경험 ${n}`, questionId: s.currentQuestionId, expectedRevision: s.revision }, 'student1', now); assert.equal(s.status, 'INTERVIEW_COMPLETED'); assert.equal(s.messages.length, 16); assert.equal(s.messages.filter(m => m.role === 'reporter').length, 8); assert.equal(s.currentQuestionId, ''); assert.throws(() => appendAnswer(s, { text: '또 답변', questionId: 'q-8', expectedRevision: 8 }, 'student1', now), /WRONG_STATE/); });
+test('three-answer minimum before early finish', () => { let s = fresh(); assert.throws(() => finishSession(s, 'student1', 0, now), /MINIMUM_ANSWERS/); for (let n = 0; n < 3; n++) s = appendAnswer(s, { text: '경험', questionId: s.currentQuestionId, expectedRevision: s.revision }, 'student1', now); assert.equal(finishSession(s, 'student1', 3, now).status, 'INTERVIEW_COMPLETED'); });
+test('answer preserves prior messages and class snapshot', () => { const first = fresh(); const next = appendAnswer(first, { text: '로봇을 고쳐요', questionId: 'q-1', expectedRevision: 0 }, 'student1', now); assert.equal(first.messages.length, 1); assert.equal(next.messages.length, 3); assert.match(next.messages[2].text, /로봇을 고쳐요/); c.questionLimit = 12; assert.equal(next.settings.questionLimit, 8); c.questionLimit = 8; });
+test('six or more classes need no schema change', () => { for (let n = 1; n <= 10; n++) assert.equal(classInput.parse({ title: `${n}반`, classroom: String(n), objective: '진로', maxStudents: 22 }).maxStudents, 22); });
