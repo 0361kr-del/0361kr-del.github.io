@@ -236,3 +236,12 @@ test('launch switch prevents anonymous children from joining before review',asyn
  await assert.rejects(()=>call('anonymous','joinClassByQr',{code,student}),/LIVE_INTERVIEW_NOT_ENABLED/);
  assert.ok((await call('teacher','joinClassByQr',{code,student})).session.id);
 });
+
+test('system usage is owner-only and excludes student content',async()=>{
+ const {OWNER_UID}=await import('../functions/src/ai-policy.ts');
+ await db.doc(`teachers/${OWNER_UID}`).set({active:true});
+ await assert.rejects(()=>call('teacher','getSystemUsage'),/ACCESS_DENIED/);
+ await assert.rejects(()=>call('student','getSystemUsage'));
+ const usage=await call(OWNER_UID,'getSystemUsage');assert.equal(usage.days.length,7);assert.ok(usage.totals.teachers>=1);assert.ok(usage.classes.length<=50);assert.ok(usage.jobSample.student<=500);
+ for(const c of usage.classes){assert.equal(c.messages,undefined);assert.equal(c.ai,undefined);assert.equal(c.objective,undefined);}
+});

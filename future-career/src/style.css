@@ -7,3 +7,5 @@
 .newspaper-footer{display:grid;grid-template-columns:1fr;gap:8px;text-align:center;overflow-wrap:anywhere}.newspaper-label{justify-self:end;text-align:right}.article-paper .paper-top{overflow-wrap:anywhere}.article-paper .paper-meta{justify-content:center}
 
 .lesson-description{min-width:0;max-width:100%;height:auto;margin:0 0 24px;padding:20px;background:#e5eddc;border-radius:10px;text-align:left;overflow-wrap:anywhere;word-break:normal}.lesson-description strong{display:block;margin-bottom:10px}.lesson-description p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.8}.narrow,.narrow form,.grid2>*{min-width:0}
+
+.usage-table{overflow-x:auto;margin:18px 0 28px}.usage-table table{border-collapse:collapse;width:100%;font-size:14px}.usage-table th,.usage-table td{text-align:left;padding:10px 12px;border-bottom:1px solid #d6dfd0;overflow-wrap:anywhere}.usage-table th{background:#edf2df}

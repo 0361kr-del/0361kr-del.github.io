@@ -1,3 +1,4 @@
+import { getSystemUsage } from './admin-usage.js';
 import { newspaperSchema } from '../../shared/newspaper.js';
 import { getGlobalAi, applyAiPolicy, saveGlobalAi, isSiteOwner } from './ai-policy.js';
 import { enrollGoogleTeacher } from './teacher-access.js';
@@ -155,6 +156,7 @@ export const studentApi = onCall({region:'asia-northeast3',invoker:'public',enfo
     await rate(uid);
     if(method==='deleteClass'){if(p.confirm!==true)fail('INVALID_INPUT');return await deleteClassData(id.parse(p.classId),uid);}
     if(method==='teacherStatus') return {active:await enrollGoogleTeacher(uid,request.auth.token),isOwner:isSiteOwner(uid)};
+    if(method==='getSystemUsage'){await requireTeacher(uid);return await getSystemUsage(uid);}
     if(method==='getGlobalAi'){await requireTeacher(uid);return {ai:await getGlobalAi()};}
     if(method==='saveGlobalAi'){await requireTeacher(uid);return {ai:await saveGlobalAi(uid,p.ai)};}
     if(method==='createClass') {
