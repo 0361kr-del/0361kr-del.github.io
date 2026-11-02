@@ -17,4 +17,6 @@ if node -e 'const fs=require("fs");const d=JSON.parse(fs.readFileSync("/tmp/spik
 fi
 echo '새로 발급한 OpenAI API 키를 아래 보안 입력란에 입력하세요. 입력은 화면에 표시되지 않습니다.'
 npx -y firebase-tools@latest functions:secrets:set OPENAI_API_KEY --project "$project"
+echo '공용 참여 코드를 8자 이상으로 정해 입력하세요. API 키와 다른 값을 사용하세요.'
+npx -y firebase-tools@latest functions:secrets:set SPIKE_ACCESS_CODE --project "$project"
 bash scripts/deploy.sh
