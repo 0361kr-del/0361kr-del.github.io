@@ -6,7 +6,7 @@ if r.returncode:
 key=r.stdout.strip()
 if not key:
  print('EMPTY_KEY: 저장된 API 키가 비어 있습니다.');sys.exit(1)
-body={'model':'gpt-image-1','prompt':'A simple volleyball on an indoor court, no people, no text. Background for a school volleyball poster.','size':'1024x1536','quality':'low','n':1}
+body={'model':'gpt-image-2.5-flare','prompt':'A simple volleyball on an indoor court, no people, no text. Background for a school volleyball poster.','size':'1024x1536','quality':'low','n':1}
 req=urllib.request.Request('https://api.openai.com/v1/images/generations',data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'})
 def safe(value):
  text=str(value or '').replace(key,'[REDACTED]')

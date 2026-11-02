@@ -21,3 +21,6 @@ Local production frontend and Functions TypeScript builds. Live code verificatio
 
 ## Existing deployment: switch to shared code
 Run `bash scripts/enable-shared-code.sh`. It creates a new secret version and deploys this project only. Use a new code to revoke the old one.
+
+## 이미지 모델 수정 (2026-11-02)
+종료된 `gpt-image-1`을 `gpt-image-2.5-flare`로 교체했습니다. Images API, low 품질, 1024x1536, 1장 및 일일 20회 제한을 유지합니다. 실제 계정의 이미지 생성은 배포 후 확인해야 합니다.
