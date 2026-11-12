@@ -24,3 +24,10 @@ Run `bash scripts/enable-shared-code.sh`. It creates a new secret version and de
 
 ## 이미지 모델 수정 (2026-11-02)
 종료된 `gpt-image-1`을 `gpt-image-2.5-flare`로 교체했습니다. Images API, low 품질, 1024x1536, 1장 및 일일 20회 제한을 유지합니다. 실제 계정의 이미지 생성은 배포 후 확인해야 합니다.
+
+## Gallery sharing sync (2026-11-12)
+Ported gallery sharing from Sites source commit `9463c8b55c142959680a9e4253d90057cce6afab`.
+The current canvas is copied into an immutable submission snapshot, with a thumbnail, title, nickname, description and explicit publication consent. Submissions remain pending until a gallery administrator approves them. Retries reuse the submission ID.
+The existing shared participation code, AI endpoints, manual/prompt modes and image generation animation remain in place. No API keys or server credentials are changed.
+
+For this frontend-only update run `bash scripts/deploy-hosting.sh`. It deploys Hosting only; it does not redeploy Functions or Firestore rules.
