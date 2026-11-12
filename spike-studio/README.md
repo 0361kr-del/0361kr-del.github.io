@@ -11,7 +11,7 @@ Frontend: Vite React/TypeScript. Server: Firebase Gen2 `spikeApi`, Seoul region.
 5. Visit the returned Hosting URL and enter the shared code. Google sign-in is not required.
 
 The setup creates the default Firestore database only if absent, creates a web app if none exists, stores the OpenAI key in Secret Manager, and deploys only this project.
-Firestore client access is denied. Server compares the shared code using SHA-256 and timing-safe comparison and validates request origin. Requests are limited to 60 per 10-minute window per hashed IP; no raw IP or code is logged. The browser keeps the code in sessionStorage until participation ends or the tab session ends. Rotating the server secret invalidates the old code on the next request. AI quotas are reserved transactionally before calls: 20 images / 100 text requests per UTC day, failures included. These are request limits, not a dollar budget. OpenAI model access and billing must be available. Images are returned to the browser, not stored on the server; templates/text persist in browser storage. Canvas image export and paid AI calls require live browser validation after setup.
+Firestore client access is denied. Server compares the shared code using SHA-256 and timing-safe comparison and validates request origin. Only failed participation-code attempts are limited to 60 per 10-minute window per hashed IP; valid classroom participants are not IP-throttled. No raw IP or code is logged. The browser keeps the code in sessionStorage until participation ends or the tab session ends. Rotating the server secret invalidates the old code on the next request. Field testing has no application-level daily generation quotas. Atomic daily usage counters still count image/text attempts, including failures, for later quota planning. Provider quotas and server concurrency still apply. OpenAI model access and billing must be available. Images are returned to the browser, not stored on the server; templates/text persist in browser storage. Canvas image export and paid AI calls require live browser validation after setup.
 
 ## Verification
 Local production frontend and Functions TypeScript builds. Live code verification, image generation, and deployment require Cloud Shell project credentials and the secret.
@@ -23,7 +23,7 @@ Local production frontend and Functions TypeScript builds. Live code verificatio
 Run `bash scripts/enable-shared-code.sh`. It creates a new secret version and deploys this project only. Use a new code to revoke the old one.
 
 ## 이미지 모델 수정 (2026-11-02)
-종료된 `gpt-image-1`을 `gpt-image-2.5-flare`로 교체했습니다. Images API, low 품질, 1024x1536, 1장 및 일일 20회 제한을 유지합니다. 실제 계정의 이미지 생성은 배포 후 확인해야 합니다.
+종료된 `gpt-image-1`을 `gpt-image-2.5-flare`로 교체했습니다. Images API, low 품질, 1024x1536, 1장 설정을 유지합니다. 일일 생성 한도는 아래 필드 테스트 변경으로 해제되었습니다. 실제 계정의 이미지 생성은 배포 후 확인해야 합니다.
 
 ## Gallery sharing sync (2026-11-12)
 Ported gallery sharing from Sites source commit `9463c8b55c142959680a9e4253d90057cce6afab`.
@@ -41,3 +41,14 @@ Validation: TypeScript and production build passed. Simulated-DOM tests covered 
 Supersedes the initial draft-import behavior above: every page load starts with an empty poster; neither legacy drafts nor editor autosaves are automatically restored. Text presets create empty editable boxes. No saved records are explicitly deleted.
 The default style is None, which sends no style instruction. The primary generation button is full-width and enlarged, with Clear background / Next below. Upload controls and thumbnail selection were removed; the one returned image is applied directly. Existing paid API, participation-code checks and gallery submission remain unchanged.
 Validation: build/typecheck and simulated DOM tests passed for blank startup with legacy storage present, absent upload/thumbnail controls, exact unstyled prompt, styled prompt, undo/redo and composed gallery handoff.
+
+## Classroom field test (2026-11-12)
+Removed image 20/day and copy 100/day caps. Valid access codes bypass the shared-IP gate so a school NAT does not exhaust a class-wide allowance. Invalid codes remain throttled. Usage counters continue to track attempts, not successful results or billed cost.
+Validation: Functions build and 7 mocked tests passed, including both generation kinds above their old caps and blocked IP state. No paid API request was used for tests.
+Deploy Functions (Hosting-only deploy does not apply this change):
+```bash
+npm --prefix functions install --no-audit --no-fund
+npm --prefix functions run build
+node --test functions/*.test.mjs
+npx -y firebase-tools@latest deploy --project spike-studio-0361kr --only functions:spike-studio:spikeApi
+```
