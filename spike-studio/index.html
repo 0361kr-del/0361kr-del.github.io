@@ -52,29 +52,26 @@
       </div>
       <div class="field">
         <label class="lbl" for="prompt">어떤 배경을 원하나요?</label>
-        <textarea id="prompt" maxlength="900" placeholder="예: 노을 지는 운동장, 하늘에 종이비행기"></textarea>
+        <textarea id="prompt" maxlength="900"></textarea>
       </div>
       <div class="field">
         <span class="lbl">느낌</span>
         <div class="chips" id="styles"></div>
       </div>
-      <div class="row"><label class="btn">사진 업로드<input id="upload" type="file" accept="image/png,image/jpeg,image/webp" hidden></label><button class="btn" id="clearbg">배경 지우기</button></div><div class="loading" id="bgloading" hidden><span class="spin"></span>배경을 그리는 중이에요</div>
-      <div id="bgresult" hidden>
-        <span class="lbl" style="display:block;font-weight:700;margin-bottom:6px;font-size:14px">마음에 드는 배경을 골라요</span>
-        <div class="thumbs" id="thumbs"></div>
-      </div>
-      <div class="row">
-        <button class="btn primary" id="gen">배경 만들기</button>
+      <div class="loading" id="bgloading" hidden><span class="spin"></span>배경을 그리는 중이에요</div>
+      <button class="btn primary wide generate-main" id="gen">배경 만들기</button>
+      <div class="row background-actions">
+        <button class="btn" id="clearbg">배경 지우기</button>
         <button class="btn accent" id="to2">다음: 글자 넣기</button>
       </div>
-      <p class="note">AI 생성은 참여 코드가 필요해요. 한 번에 이미지 1장을 만들어요. 글자 설정은 이 브라우저에 자동 보관되며, 배경은 PNG로 저장해 주세요. 원본 1024×1536px에서 선택한 비율에 맞춰 표시해요.</p>
+      <p class="note">AI 생성은 참여 코드가 필요해요. 한 번에 이미지 1장을 만들어요. 새로 열면 빈 포스터에서 시작해요. 완성한 작품은 PNG로 저장해 주세요. 원본 1024×1536px에서 선택한 비율에 맞춰 표시해요.</p>
     </div>
 
     <!-- 2 글자 -->
-    <div id="p-text" hidden><details class="copy-tools"><summary>AI로 문구 만들기</summary><label class="lbl" for="copy-prompt">어떤 문구를 원하나요?</label><textarea id="copy-prompt" maxlength="1000" placeholder="예: 처음 배구를 하는 학생도 환영하는 모집 문구"></textarea><button class="btn primary wide" id="copy-gen">AI 문구 만들기</button><p class="note">제목과 부제를 글자 상자로 추가해요. 날짜·장소는 직접 입력해 주세요.</p></details>
+    <div id="p-text" hidden><details class="copy-tools"><summary>AI로 문구 만들기</summary><label class="lbl" for="copy-prompt">어떤 문구를 원하나요?</label><textarea id="copy-prompt" maxlength="1000"></textarea><button class="btn primary wide" id="copy-gen">AI 문구 만들기</button><p class="note">제목과 부제를 글자 상자로 추가해요. 날짜·장소는 직접 입력해 주세요.</p></details>
       <div id="t-none">
         <h2>글자 넣기</h2>
-        <p class="lead">넣고 싶은 글자 모양을 고르세요. 포스터 위 글자를 누르면 꾸밀 수 있고, 한 번 더 누르면 문구를 고칠 수 있어요.</p>
+        <p class="lead">넣고 싶은 글자 모양을 고른 뒤 빈 글자 상자에 문구를 입력하세요. 포스터 위 글자를 누르면 꾸밀 수 있고, 한 번 더 누르면 문구를 고칠 수 있어요.</p>
         <div class="presets" id="presets"></div>
         <button class="btn accent wide" id="to3">다음: 갤러리에 보내기</button>
       </div>
