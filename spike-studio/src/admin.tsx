@@ -6,7 +6,6 @@ import './admin.css';
 type Prompts={imagePrompt:string;copyPrompt:string};
 type Settings=Prompts&{version:number;updatedAt:string|null};
 type Dashboard={settings:Settings;defaults:Prompts;models:{image:string;copy:string};usage:{date:string;image:number;copy:number}[]};
-const owner='0361kr@gmail.com';
 async function request(user:User,body?:unknown){
  const response=await fetch('/api/admin',{method:body?'POST':'GET',headers:{Authorization:'Bearer '+await user.getIdToken(),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
  const result=await response.json().catch(()=>({error:'관리자 API를 불러오지 못했습니다. Functions 배포 상태를 확인해 주세요.'}));
@@ -40,7 +39,7 @@ function App(){
  return <><header><a href="/">스파이크 스튜디오 <small>관리자</small></a><nav><a href="/">포스터 만들기 ↗</a>{user&&<button disabled={busy} onClick={()=>{if(dirty&&!window.confirm('저장하지 않은 지침을 버리고 로그아웃할까요?'))return;void signOut(auth!).catch(()=>setError('로그아웃하지 못했습니다. 다시 시도해 주세요.'));}}>로그아웃</button>}</nav></header><main>
  <div className="intro"><p className="eyebrow">STUDIO CONTROL</p><h1>우리 수업에 맞게,<br/>AI의 방향을 정하세요.</h1><p>생성 지침과 사용량을 한곳에서 관리합니다.</p></div>
  {error&&<div role="alert" className="message error">{error}</div>}{notice&&<div role="status" className="message">{notice}</div>}
- {boot?<p role="status">로그인 상태 확인 중…</p>:!user?<section className="login"><h2>소유자 로그인</h2><p>{owner} Google 계정으로 관리할 수 있어요.<br/>학생용 참여 코드는 관리자 권한을 부여하지 않습니다.</p><button className="primary" disabled={busy||!auth} onClick={()=>void login()}>Google 계정으로 로그인</button></section>:<>
+ {boot?<p role="status">로그인 상태 확인 중…</p>:!user?<section className="login"><h2>소유자 로그인</h2><p>등록된 관리자 Google 계정으로 로그인해 주세요.<br/>학생용 참여 코드는 관리자 권한을 부여하지 않습니다.</p><button className="primary" disabled={busy||!auth} onClick={()=>void login()}>Google 계정으로 로그인</button></section>:<>
  <div className="account"><span>{user.email}</span><button disabled={busy||loading} onClick={()=>void refresh()}>새로고침</button></div>
  {loading?<p role="status">관리자 설정 불러오는 중…</p>:data&&form?<>
  <div className="metrics"><section><p>이미지 요청</p><strong>{totals?.image.toLocaleString()}</strong><small>최근 집계 최대 30일</small></section><section><p>문구 요청</p><strong>{totals?.copy.toLocaleString()}</strong><small>최근 집계 최대 30일</small></section><section><p>필드 테스트</p><strong className="unlimited">횟수 제한 없음</strong><small>사이트 일일 한도 · 정상 참여자 IP 한도</small></section></div>
