@@ -32,7 +32,14 @@ function App(){
   return()=>{live=false;};
  },[user]);
  useEffect(()=>{if(!dirty)return;const f=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue='';};window.addEventListener('beforeunload',f);return()=>window.removeEventListener('beforeunload',f);},[dirty]);
- async function login(){if(!auth)return;setBusy(true);setError('');try{const p=new GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});await signInWithPopup(auth,p);}catch(e){const code=(e as {code?:string}).code;setError(code==='auth/operation-not-allowed'?'Firebase Authentication에서 Google 로그인을 활성화해 주세요.':code==='auth/unauthorized-domain'?'Firebase Authentication의 승인된 도메인에 현재 사이트를 추가해 주세요.':code==='auth/popup-closed-by-user'?'로그인 창이 닫혔습니다. 다시 로그인해 주세요.':'Google 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.');}finally{setBusy(false);}}
+ async function login(){if(!auth)return;setBusy(true);setError('');try{const p=new GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});await signInWithPopup(auth,p);}catch(e){const raw=(e as {code?:unknown}).code;const code=typeof raw==='string'&&/^auth\/[a-z0-9-]+$/.test(raw)?raw:'auth/unknown';const messages:Record<string,string>={
+ 'auth/configuration-not-found':'Firebase Authentication 설정이 없습니다. Firebase Console에서 Authentication 시작하기를 누르고 Google 로그인을 활성화해 주세요.',
+ 'auth/operation-not-allowed':'Firebase Authentication에서 Google 로그인을 활성화해 주세요.',
+ 'auth/unauthorized-domain':'Firebase Authentication의 승인된 도메인에 현재 사이트를 추가해 주세요.',
+ 'auth/popup-blocked':'로그인 팝업이 차단됐습니다. 이 사이트의 팝업을 허용하거나 일반 Chrome 창에서 다시 열어 주세요.',
+ 'auth/popup-closed-by-user':'로그인 창이 닫혔습니다. 다시 로그인해 주세요.',
+ 'auth/network-request-failed':'인증 서버에 연결하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.',
+ 'auth/invalid-api-key':'Firebase 웹 앱 인증 설정을 확인해 주세요.'};setError((messages[code]||'Google 로그인을 완료하지 못했습니다. 아래 진단 코드를 알려 주세요.')+' (진단: '+code+')');}finally{setBusy(false);}}
  async function refresh(){if(!user)return;if(dirty&&!window.confirm('저장하지 않은 지침을 버리고 다시 불러올까요?'))return;setBusy(true);setError('');try{const d=await request(user);setData(d);setForm(d.settings);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function save(){if(!user||!form||!data)return;setBusy(true);setError('');setNotice('');try{const result=await request(user,{imagePrompt:form.imagePrompt,copyPrompt:form.copyPrompt,version:form.version});setForm(result.settings);setData({...data,settings:result.settings});setNotice('저장했습니다. 다음 생성 요청부터 적용됩니다.');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  const totals=data?.usage.reduce((sum,d)=>({image:sum.image+d.image,copy:sum.copy+d.copy}),{image:0,copy:0});
@@ -52,3 +59,4 @@ function App(){
  </main><footer>SPIKE STUDIO · 관리자 설정</footer></>;
 }
 createRoot(document.getElementById('admin-root')!).render(<App/>);
+
