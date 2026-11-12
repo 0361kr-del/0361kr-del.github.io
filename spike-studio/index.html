@@ -1,1 +1,142 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>스파이크 스튜디오</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>스파이크 스튜디오 포스터 만들기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Gaegu:wght@700&family=Gowun+Dodum&family=Jua&family=Nanum+Myeongjo:wght@800&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/editor.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">스파이크 스튜디오</div>
+  <nav class="steps" aria-label="만드는 순서">
+    <button class="step" data-step="1"><span class="n">1</span>배경</button>
+    <button class="step" data-step="2"><span class="n">2</span>글자</button>
+    <button class="step" data-step="3"><span class="n">3</span>보내기</button>
+  </nav>
+  <div class="hist"><button class="icon-btn" id="participate">참여 코드 입력</button>
+    <button class="icon-btn" id="undo" aria-label="되돌리기">↶ 되돌리기</button>
+    <button class="icon-btn" id="redo" aria-label="다시 하기">↷ 다시</button>
+  </div>
+</header>
+
+<main class="work">
+  <section class="stage" id="stage" aria-label="포스터">
+    <div class="poster" id="poster">
+      <div class="clip" id="clip">
+        <img class="bg" id="bgimg" alt="" hidden>
+        <div class="empty-bg" id="emptybg">배경을 먼저<br>만들어 보세요</div>
+        <div class="guide v" id="gv"></div>
+        <div class="guide h" id="gh"></div>
+      </div>
+      <div class="sel" id="sel">
+        <button class="hd size" id="hsize" aria-label="크기 바꾸기" tabindex="-1"><svg viewBox="0 0 20 20" fill="none" stroke="#2B4BFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l10 10M5 10V5h5M15 10v5h-5"/></svg></button>
+        <button class="hd rot" id="hrot" aria-label="돌리기" tabindex="-1"><svg viewBox="0 0 20 20" fill="none" stroke="#2B4BFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a6 6 0 1 1-2-4.5M14.5 2.5v3.5H11"/></svg></button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel" id="panel">
+
+    <!-- 1 배경 -->
+    <div id="p-bg">
+      <h2>배경 만들기</h2>
+      <p class="lead">어떤 그림이 좋을지 써 주면 AI가 배경을 그려 줘요.</p>
+      <div class="field">
+        <span class="lbl">포스터 모양</span>
+        <div class="chips" id="ratios"></div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="prompt">어떤 배경을 원하나요?</label>
+        <textarea id="prompt" maxlength="900" placeholder="예: 노을 지는 운동장, 하늘에 종이비행기"></textarea>
+      </div>
+      <div class="field">
+        <span class="lbl">느낌</span>
+        <div class="chips" id="styles"></div>
+      </div>
+      <div class="row"><label class="btn">사진 업로드<input id="upload" type="file" accept="image/png,image/jpeg,image/webp" hidden></label><button class="btn" id="clearbg">배경 지우기</button></div><div class="loading" id="bgloading" hidden><span class="spin"></span>배경을 그리는 중이에요</div>
+      <div id="bgresult" hidden>
+        <span class="lbl" style="display:block;font-weight:700;margin-bottom:6px;font-size:14px">마음에 드는 배경을 골라요</span>
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="gen">배경 만들기</button>
+        <button class="btn accent" id="to2">다음: 글자 넣기</button>
+      </div>
+      <p class="note">AI 생성은 참여 코드가 필요해요. 한 번에 이미지 1장을 만들어요. 글자 설정은 이 브라우저에 자동 보관되며, 배경은 PNG로 저장해 주세요. 원본 1024×1536px에서 선택한 비율에 맞춰 표시해요.</p>
+    </div>
+
+    <!-- 2 글자 -->
+    <div id="p-text" hidden><details class="copy-tools"><summary>AI로 문구 만들기</summary><label class="lbl" for="copy-prompt">어떤 문구를 원하나요?</label><textarea id="copy-prompt" maxlength="1000" placeholder="예: 처음 배구를 하는 학생도 환영하는 모집 문구"></textarea><button class="btn primary wide" id="copy-gen">AI 문구 만들기</button><p class="note">제목과 부제를 글자 상자로 추가해요. 날짜·장소는 직접 입력해 주세요.</p></details>
+      <div id="t-none">
+        <h2>글자 넣기</h2>
+        <p class="lead">넣고 싶은 글자 모양을 고르세요. 포스터 위 글자를 누르면 꾸밀 수 있고, 한 번 더 누르면 문구를 고칠 수 있어요.</p>
+        <div class="presets" id="presets"></div>
+        <button class="btn accent wide" id="to3">다음: 갤러리에 보내기</button>
+      </div>
+      <div id="t-edit" hidden>
+        <div class="row" style="margin-bottom:14px">
+          <button class="btn primary" id="edit">문구 고치기</button>
+          <button class="btn" id="dup">복사</button>
+          <button class="btn danger" id="del">지우기</button>
+        </div>
+        <div class="field">
+          <span class="lbl">글씨체</span>
+          <div class="chips scroll" id="fonts"></div>
+        </div>
+        <div class="field">
+          <label class="lbl" for="size">크기</label>
+          <div class="sizer"><span style="font-size:13px">가</span><input type="range" id="size" min="24" max="320" step="2"><span style="font-size:24px">가</span></div>
+        </div>
+        <div class="field">
+          <span class="lbl">색</span>
+          <div class="swatches" id="colors"></div>
+        </div>
+        <div class="two">
+          <div class="field">
+            <span class="lbl">꾸미기</span>
+            <div class="row">
+              <button class="toggle" data-fx="shadow">그림자</button>
+              <button class="toggle" data-fx="stroke">테두리</button>
+              <button class="toggle" data-fx="box">바탕 상자</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="lbl">줄 맞춤</span>
+            <div class="row">
+              <button class="toggle" data-align="left">왼쪽</button>
+              <button class="toggle" data-align="center">가운데</button>
+              <button class="toggle" data-align="right">오른쪽</button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn" id="more">글자 더 넣기</button>
+          <button class="btn accent" id="to3b">다음: 갤러리에 보내기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 보내기 -->
+    <div id="p-send" hidden>
+      <div id="s-form">
+        <h2>갤러리에 보내기</h2>
+        <div class="warn" id="phwarn" hidden><span>아직 고치지 않은 예시 글자가 있어요.</span><button class="btn" id="fixph">글자 고치기</button></div>
+        <img class="preview" id="preview" alt="완성된 포스터 미리 보기">
+        <button class="btn wide" id="download">PNG 저장</button><div id="gallery-root"></div><p class="note">제목·닉네임·설명을 확인하고 공개에 동의하면 관리자 승인 대기로 접수됩니다.</p>
+      </div>
+
+    </div>
+
+  </aside>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script type="module" src="/src/editor.js"></script>
+</body>
+</html>
