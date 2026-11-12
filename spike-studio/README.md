@@ -31,3 +31,8 @@ The current canvas is copied into an immutable submission snapshot, with a thumb
 The existing shared participation code, AI endpoints, manual/prompt modes and image generation animation remain in place. No API keys or server credentials are changed.
 
 For this frontend-only update run `bash scripts/deploy-hosting.sh`. It deploys Hosting only; it does not redeploy Functions or Firestore rules.
+
+## Prototype editor layout (2026-11-12)
+The main entry now follows the supplied three-step design: background, draggable text, and send. Desktop uses a large canvas area plus a right tool panel; narrow screens place the tools below. Font, color, size, rotation, effects, alignment, undo/redo, local text autosave, PNG export and uploaded backgrounds are available. Existing `spike-draft` text is imported on first use; backgrounds are not persisted.
+`src/editor-bridge.tsx` reuses the existing participation-code auth and `/api/generate` contract. Image generation still makes one request for one image. The existing `ShareToGallery` component receives the fully composed poster; consent, private pending submissions, and retry IDs remain unchanged. No Functions, API keys, gallery endpoint or review rules changed.
+Validation: TypeScript and production build passed. Simulated-DOM tests covered prior draft import, step switching, AI adapter inputs, undo/redo, one-image result, background removal, composed-gallery handoff and local text save. Live visual/touch QA was unavailable because the managed preview relay was missing; real paid API generation was not repeated.
