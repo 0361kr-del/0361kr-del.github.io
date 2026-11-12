@@ -1,6 +1,11 @@
 import {generateAI,refreshGallery,downloadPoster,setupAccess} from './editor-bridge';
 
-async function generateBackground({prompt,style}){const data=await generateAI('image',`${prompt||'배구부 홍보 포스터 배경'}. 느낌: ${STYLES.find(s=>s.id===style)?.label||style}. 글자 없이.`);return ['data:image/png;base64,'+data.image];}
+async function generateBackground({prompt,style}){
+ const brief=prompt.trim();if(!brief)throw Error('원하는 배경을 설명해 주세요.');
+ const selected=STYLES.find(s=>s.id===style);
+ const instruction=style==='none'?brief:`${brief}. 느낌: ${selected.label}.`;
+ const data=await generateAI('image',instruction);return 'data:image/png;base64,'+data.image;
+}
 
 /* ---------- 설정 ---------- */
 const W = 1000;
@@ -11,6 +16,7 @@ const RATIOS = [
   {id:'a4',   label:'A4 종이',  h:1414}
 ];
 const STYLES = [
+  {id:'none',label:'없음'},
   {id:'watercolor',label:'수채화'},{id:'neon',label:'네온'},{id:'minimal',label:'단순하게'},
   {id:'retro',label:'레트로'},{id:'space',label:'우주'},{id:'nature',label:'자연'}
 ];
@@ -27,15 +33,15 @@ const FONTS = [
 const COLORS = ['#FFFFFF','#15171F','#FFD234','#FF7A1A','#F23D4C','#FF6FB1','#8A4DFF','#2B4BFF','#37C3FF','#1FBF75'];
 const COLOR_NAMES = ['흰색','검정','노랑','주황','빨강','분홍','보라','파랑','하늘','초록'];
 const PRESETS = [
-  {id:'title',  label:'큰 제목',   text:'제목',          font:'black', size:120, color:'#FFFFFF', shadow:true},
-  {id:'body',   label:'설명 글',   text:'설명을 써요',   font:'noto',  size:46,  color:'#FFFFFF', shadow:true},
-  {id:'hand',   label:'손글씨',    text:'손글씨',        font:'gaegu', size:80,  color:'#FFD234', shadow:true},
-  {id:'sticker',label:'스티커',    text:'스티커',        font:'jua',   size:64,  color:'#15171F', box:true}
+  {id:'title',  label:'큰 제목',   text:'',          font:'black', size:120, color:'#FFFFFF', shadow:true},
+  {id:'body',   label:'설명 글',   text:'',   font:'noto',  size:46,  color:'#FFFFFF', shadow:true},
+  {id:'hand',   label:'손글씨',    text:'',        font:'gaegu', size:80,  color:'#FFD234', shadow:true},
+  {id:'sticker',label:'스티커',    text:'',        font:'jua',   size:64,  color:'#15171F', box:true}
 ];
 
 /* ---------- 상태 ---------- */
-const state = {step:1, ratio:'4:5', bg:null, texts:[], sel:null, editing:null, style:'watercolor', starterAdded:false};
-let scale = 1, uid = 1, hist = [], hidx = -1, candidates = [], editBefore = '';
+const state = {step:1, ratio:'4:5', bg:null, texts:[], sel:null, editing:null, style:'none'};
+let scale = 1, uid = 1, hist = [], hidx = -1, editBefore = '';
 const els = new Map();
 const $ = id => document.getElementById(id);
 const H = () => RATIOS.find(r=>r.id===state.ratio).h;
@@ -44,7 +50,7 @@ const item = id => state.texts.find(t=>t.id===id);
 
 /* ---------- 되돌리기 ---------- */
 function snap(){return {ratio:state.ratio,bg:state.bg,texts:JSON.parse(JSON.stringify(state.texts))}}
-function commit(){hist = hist.slice(0,hidx+1); hist.push(snap()); if(hist.length>60) hist.shift(); hidx = hist.length-1; histBtns(); persistDesign()}
+function commit(save=true){hist = hist.slice(0,hidx+1); hist.push(snap()); if(hist.length>60) hist.shift(); hidx = hist.length-1; histBtns(); if(save)persistDesign()}
 function restore(s){
   state.ratio=s.ratio; state.bg=s.bg; state.texts=JSON.parse(JSON.stringify(s.texts));
   if(!item(state.sel)) state.sel=null; state.editing=null;
@@ -113,7 +119,6 @@ if(document.fonts){ document.fonts.addEventListener('loadingdone', updateSel) }
 function setStep(n){
   if(n!==2){ stopEdit(); state.sel=null; updateSel() }
   state.step=n;
-  if(n===2 && !state.starterAdded && !state.texts.length){ addStarter() }
   renderPanel();
   if(n===3) enterSend();
   $('panel').scrollTop=0;
@@ -140,7 +145,7 @@ $('ratios').onclick=e=>{
   const b=e.target.closest('[data-r]'); if(!b||b.dataset.r===state.ratio) return;
   const old=H(); state.ratio=b.dataset.r; const k=H()/old;
   state.texts.forEach(t=>t.y=Math.round(t.y*k));
-  candidates=[]; $('bgresult').hidden=true; $('gen').textContent='배경 만들기';
+  $('gen').textContent='배경 만들기';
   renderAll(); commit();
 };
 $('styles').innerHTML=STYLES.map(s=>`<button class="chip" data-s="${s.id}" aria-pressed="${s.id===state.style}">${s.label}</button>`).join('');
@@ -149,32 +154,16 @@ $('styles').onclick=e=>{
   $('styles').querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed', c===b));
 };
 $('gen').onclick=async()=>{
-  const btn=$('gen'); btn.disabled=true; $('bgloading').hidden=false; $('bgresult').hidden=true;
-  try{
-    candidates=await generateBackground({prompt:$('prompt').value.trim(), style:state.style, ratio:{w:W,h:H()}, count:1});
-    $('thumbs').innerHTML=candidates.map((u,i)=>`<button class="thumb" data-i="${i}" aria-pressed="${i===0}" aria-label="배경 ${i+1}"><img src="${u}" alt=""></button>`).join('');
-    $('bgresult').hidden=false; state.bg=candidates[0]; renderBg(); commit();
-    btn.textContent='다시 만들기';
-  }catch(err){ toast(err.message || '배경을 만들지 못했어요.') }
-  $('bgloading').hidden=true; btn.disabled=false;
-};
-$('thumbs').onclick=e=>{
-  const b=e.target.closest('[data-i]'); if(!b) return;
-  $('thumbs').querySelectorAll('.thumb').forEach(c=>c.setAttribute('aria-pressed', c===b));
-  state.bg=candidates[+b.dataset.i]; renderBg(); commit();
+ const btn=$('gen');btn.disabled=true;$('bgloading').hidden=false;
+ try{state.bg=await generateBackground({prompt:$('prompt').value,style:state.style});renderBg();commit();btn.textContent='배경 다시 만들기';}
+ catch(err){toast(err.message||'배경을 만들지 못했어요.');}
+ finally{$('bgloading').hidden=true;btn.disabled=false;}
 };
 
 /* ---------- 2 글자 ---------- */
 function newText(o){
-  const t=Object.assign({id:'t'+(uid++),text:'글자',x:W/2,y:H()/2,size:64,rot:0,font:'noto',color:'#FFFFFF',align:'center',shadow:false,stroke:false,box:false,ph:false},o);
+  const t=Object.assign({id:'t'+(uid++),text:'',x:W/2,y:H()/2,size:64,rot:0,font:'noto',color:'#FFFFFF',align:'center',shadow:false,stroke:false,box:false,ph:false},o);
   state.texts.push(t); return t;
-}
-function addStarter(){
-  state.starterAdded=true;
-  const c = state.bg ? '#FFFFFF' : '#15171F', sh=!!state.bg;
-  newText({text:'제목을 써 보세요',font:'black',size:104,y:Math.round(H()*.2),color:c,shadow:sh,ph:true});
-  newText({text:'날짜와 장소를 써 보세요',font:'noto',size:44,y:Math.round(H()*.86),color:c,shadow:sh,ph:true});
-  renderTexts(); commit();
 }
 $('presets').innerHTML=PRESETS.map(p=>{
   const f=fontOf(p.font);
@@ -184,7 +173,7 @@ $('presets').onclick=e=>{
   const b=e.target.closest('[data-p]'); if(!b) return;
   const p=PRESETS.find(x=>x.id===b.dataset.p);
   const n=state.texts.length;
-  const t=newText({text:p.text,font:p.font,size:p.size,color:p.color,shadow:!!p.shadow,box:!!p.box,ph:true,
+  const t=newText({text:p.text,font:p.font,size:p.size,color:p.color,shadow:!!p.shadow,box:!!p.box,ph:false,
     y:Math.round(H()*(.35+.1*(n%4)))});
   renderTexts(); select(t.id); commit(); startEdit(t.id);
 };
@@ -389,35 +378,17 @@ let renderVersion=0;
 async function enterSend(){
  const version=++renderVersion;$('phwarn').hidden=!state.texts.some(t=>t.ph);
  $('download').disabled=true;refreshGallery(null,'');
- try{const data=await composePoster(1080);if(version!==renderVersion||state.step!==3)return;$('preview').src=data;await refreshGallery(data,state.texts.find(t=>!t.ph)?.text||'나의 배구부 포스터');$('download').disabled=false;}
+ try{const data=await composePoster(1080);if(version!==renderVersion||state.step!==3)return;$('preview').src=data;await refreshGallery(data,state.texts.find(t=>!t.ph)?.text||'');$('download').disabled=false;}
  catch(e){toast('완성 이미지를 만들지 못했습니다. 다시 시도해 주세요.');}
 }
 $('fixph').onclick=()=>{const t=state.texts.find(t=>t.ph);setStep(2);if(t){select(t.id);startEdit(t.id)}};
 $('download').onclick=()=>downloadPoster($('preview').src);
-$('upload').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>8*1024*1024){toast('PNG, JPG, WEBP 이미지를 8MB 이하로 올려 주세요.');return;}const reader=new FileReader();reader.onload=()=>{state.bg=reader.result;renderBg();commit();};reader.readAsDataURL(f);e.target.value='';};
 $('clearbg').onclick=()=>{state.bg=null;renderBg();commit();};
-$('copy-gen').onclick=async()=>{const instruction=$('copy-prompt').value.trim();if(!instruction){toast('원하는 문구를 설명해 주세요.');return;}stopEdit();const b=$('copy-gen');b.disabled=true;b.textContent='문구 만드는 중…';try{const d=await generateAI('copy',instruction);state.texts=state.texts.filter(t=>!t.ph);newText({text:d.title,font:'black',size:104,y:Math.round(H()*.22),shadow:true});newText({text:d.subtitle,size:46,y:Math.round(H()*.72),shadow:true});state.starterAdded=true;renderTexts();commit();toast('AI 문구를 추가했어요. 글자를 눌러 수정하세요.');}catch(e){toast(e.message);}finally{b.disabled=false;b.textContent='AI 문구 만들기';}};
+$('copy-gen').onclick=async()=>{const instruction=$('copy-prompt').value.trim();if(!instruction){toast('원하는 문구를 설명해 주세요.');return;}stopEdit();const b=$('copy-gen');b.disabled=true;b.textContent='문구 만드는 중…';try{const d=await generateAI('copy',instruction);state.texts=state.texts.filter(t=>!t.ph);newText({text:d.title,font:'black',size:104,y:Math.round(H()*.22),shadow:true});newText({text:d.subtitle,size:46,y:Math.round(H()*.72),shadow:true});renderTexts();commit();toast('AI 문구를 추가했어요. 글자를 눌러 수정하세요.');}catch(e){toast(e.message);}finally{b.disabled=false;b.textContent='AI 문구 만들기';}};
 setupAccess();
 
 let toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600) }
 
 function persistDesign(){try{localStorage.setItem('spike-editor-design',JSON.stringify({ratio:state.ratio,texts:state.texts}));}catch{}}
-/* ---------- 시작 ---------- */
-try{
- const saved=JSON.parse(localStorage.getItem('spike-editor-design')||'null');
- if(saved&&RATIOS.some(r=>r.id===saved.ratio)&&Array.isArray(saved.texts)){
-  state.ratio=saved.ratio;
-  for(const t of saved.texts.slice(0,100)){
-   if(!t||typeof t.text!=='string'||!FONTS.some(f=>f.id===t.font)||!/^#[0-9a-f]{6}$/i.test(t.color)||![t.x,t.y,t.size,t.rot].every(Number.isFinite))continue;
-   newText({text:t.text.slice(0,2000),x:Math.max(0,Math.min(W,t.x)),y:Math.max(0,Math.min(H(),t.y)),size:Math.max(24,Math.min(400,t.size)),rot:t.rot%360,font:t.font,color:t.color,align:['left','center','right'].includes(t.align)?t.align:'center',shadow:!!t.shadow,stroke:!!t.stroke,box:!!t.box,ph:!!t.ph});
-  }
- }else{
-  const old=JSON.parse(localStorage.getItem('spike-draft')||'null');
-  if(old){state.ratio=old.size==='square'?'1:1':old.size==='story'?'9:16':'a4';
-   const rows=[['team',.08,32],['title',.25,104],['subtitle',.7,48],['date',.8,32],['place',.87,32],['contact',.94,32]];
-   rows.forEach(([key,y,size])=>{if(typeof old[key]==='string'&&old[key].trim())newText({text:old[key].slice(0,100),y:H()*y,size,color:'#15171F',font:key==='title'?'black':'noto'});});
-  }
- }
- state.starterAdded=!!state.texts.length;
-}catch{}
-renderAll(); commit();
+/* ---------- 시작: 자동 문구·이전 초안 없이 빈 포스터 ---------- */
+renderAll(); commit(false);
