@@ -52,3 +52,9 @@ npm --prefix functions run build
 node --test functions/*.test.mjs
 npx -y firebase-tools@latest deploy --project spike-studio-0361kr --only functions:spike-studio:spikeApi
 ```
+
+## Owner admin (2026-11-12)
+`/admin.html` manages image and copy prompts and shows the latest 30 UTC daily request counters. The editor has an Administrator link. Saved prompts apply to subsequent requests; restore defaults populates the form and requires Save. Concurrent edits use a version check. API keys are never returned or edited in this UI.
+Firebase Google sign-in is required for verified owner `0361kr@gmail.com`. Enable Google in Authentication → Sign-in method if not already enabled. The public Firebase web configuration is loaded from Hosting's `/__/firebase/init.json`; no OpenAI key is placed in the browser. Server verifies ID tokens (including revocation), email verification, owner email and Google provider on every admin read/write. Shared participation codes cannot access admin APIs. Firestore client rules remain deny-all; settings use server access only.
+Deploy **Functions and Hosting**, not Hosting alone: `bash scripts/deploy.sh`. Admin settings default to the existing prompts when no settings document exists. Generation quotas remain removed. Image API uses a combined image prompt rather than a chat system role; copy generation uses the Responses instructions field plus mandatory JSON/length rules.
+Validation: frontend and Functions builds passed; mocked tests cover owner authorization, missing/wrong identity, origin enforcement, invalid prompts and stale writes. Live Google login and paid generation require deployment credentials and were not exercised here.
