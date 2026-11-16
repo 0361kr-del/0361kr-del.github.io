@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지구를 지키는 하루</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+/* 레이아웃: 위쪽 성적표 바 → 탭 → [장면 그림 | 활동 패널] 2단 → 결과 화면. 한 가지 밝은 그림책 세계로 고정(단일 테마). */
+:root{
+  --sky:#dcEEF6;
+  --paper:#fffdf6;
+  --ink:#1e3a4c;
+  --muted:#5a7383;
+  --leaf:#2f8f5b;
+  --leaf-soft:#d8f0e1;
+  --sun:#f3b23a;
+  --sun-soft:#fdf0d2;
+  --brick:#d46b45;
+  --line:#c6d9e2;
+  --display:"Jua","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--sky);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6}
+h1,h2,h3,h4{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;line-height:1.25}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.wrap{max-width:1220px;margin:0 auto;padding:0 16px}
+
+/* 상단 */
+.top{background:var(--paper);border-bottom:2px solid var(--line);position:sticky;top:0;z-index:20}
+.top .wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand svg{flex:none}
+.brand h1{font-size:26px;color:var(--leaf)}
+.brand small{display:block;font-size:13px;color:var(--muted);font-family:var(--body)}
+.score{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:flex;flex-direction:column;align-items:flex-start;background:var(--sky);border-radius:12px;padding:4px 12px;min-width:96px}
+.chip b{font-family:var(--display);font-weight:400;font-size:22px;font-variant-numeric:tabular-nums;line-height:1.2}
+.chip span{font-size:12px;color:var(--muted)}
+.chip.co2 b{color:var(--leaf)}
+.chip.tree b{color:#3c7a3a}
+.chip.won b{color:#b77a10}
+
+.tabs{display:flex;gap:8px;padding:14px 0 0;flex-wrap:wrap}
+.tab{border:2px solid var(--line);background:var(--paper);border-radius:14px 14px 0 0;padding:8px 18px;font-family:var(--display);font-size:19px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.tab[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tab .cnt{font-family:var(--body);font-size:13px;background:rgba(255,255,255,.2);border-radius:20px;padding:0 8px}
+.tab[aria-selected="false"] .cnt{background:var(--sky)}
+
+.view{background:var(--paper);border:2px solid var(--line);border-radius:0 18px 18px 18px;padding:18px;margin-bottom:28px}
+.intro{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap}
+.intro p{margin:0;max-width:70ch;color:var(--muted)}
+.intro h2{font-size:24px}
+
+.stage{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.stage{grid-template-columns:1fr}}
+.scene{background:#eaf6fb;border-radius:16px;overflow:hidden;border:2px solid var(--line)}
+.scene svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);padding:8px 12px;border-top:2px solid var(--line);background:var(--paper)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:4px}
+
+.actlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin-top:12px}
+.actbtn{display:flex;gap:8px;align-items:center;text-align:left;border:2px solid var(--line);background:#fff;border-radius:10px;padding:6px 8px;font-size:14px;line-height:1.3}
+.actbtn .num{flex:none;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:var(--display);font-size:13px}
+.actbtn.done .num{background:var(--leaf)}
+.actbtn.tried .num{background:var(--sun);color:var(--ink)}
+.actbtn[aria-current="true"]{border-color:var(--ink);background:var(--sun-soft)}
+
+/* 활동 패널 */
+.panel{background:#fff;border:2px solid var(--ink);border-radius:16px;padding:18px;position:sticky;top:96px}
+@media (max-width:900px){.panel{position:static}}
+.place{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cat{border-radius:20px;padding:0 10px;font-size:12px;color:#fff}
+.panel h3{font-size:24px;margin:4px 0 6px}
+.q{margin:0 0 12px}
+.body{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.grid-btn{display:flex;flex-wrap:wrap;gap:6px}
+.tog{border:2px solid var(--line);background:#fffbe9;border-radius:10px;padding:6px 10px;font-size:14px;display:flex;align-items:center;gap:6px}
+.tog .dot{width:12px;height:12px;border-radius:50%;background:var(--sun);box-shadow:0 0 0 3px rgba(243,178,58,.35)}
+.tog[aria-pressed="true"]{background:#eef2f4;color:var(--muted)}
+.tog[aria-pressed="true"] .dot{background:#9fb0ba;box-shadow:none}
+.tog.chk[aria-pressed="true"]{background:var(--leaf-soft);color:var(--ink);border-color:var(--leaf)}
+.tog.chk .dot{background:#fff;border:2px solid var(--line);box-shadow:none}
+.tog.chk[aria-pressed="true"] .dot{background:var(--leaf);border-color:var(--leaf)}
+.opt{border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 12px;text-align:left;display:flex;flex-direction:column;gap:2px}
+.opt small{color:var(--muted);font-size:13px}
+.opt[aria-pressed="true"]{border-color:var(--leaf);background:var(--leaf-soft)}
+.opt.bad[aria-pressed="true"]{border-color:var(--brick);background:#fbe5dc}
+.slider label{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.slider label b{font-family:var(--display);font-weight:400;font-size:20px;color:var(--leaf)}
+input[type=range]{width:100%;accent-color:var(--leaf);height:28px}
+.ticks{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.mini{font-size:13px;color:var(--muted);margin:0}
+.counter{display:flex;align-items:center;gap:12px}
+.counter button{width:44px;height:44px;border-radius:50%;border:2px solid var(--leaf);background:#fff;font-size:22px;font-family:var(--display)}
+.counter b{font-family:var(--display);font-weight:400;font-size:28px;min-width:3ch;text-align:center}
+
+.sort-items,.bins{display:flex;flex-wrap:wrap;gap:6px}
+.item{border:2px dashed var(--line);background:#fff;border-radius:10px;padding:6px 10px;font-size:14px}
+.item[aria-pressed="true"]{border-style:solid;border-color:var(--sun);background:var(--sun-soft)}
+.item.ok{border-style:solid;border-color:var(--leaf);background:var(--leaf-soft);cursor:default}
+.item.no{border-style:solid;border-color:var(--brick);background:#fbe5dc}
+.bin{flex:1 1 80px;border:2px solid var(--ink);border-radius:10px 10px 14px 14px;padding:8px 6px;font-family:var(--display);font-size:15px;background:#fff;min-height:54px}
+.bin small{display:block;font-family:var(--body);font-size:12px;color:var(--muted)}
+
+.result{background:var(--sky);border-radius:12px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.result .r{display:flex;flex-direction:column}
+.result .r span{font-size:12px;color:var(--muted)}
+.result .r b{font-family:var(--display);font-weight:400;font-size:22px;font-variant-numeric:tabular-nums;line-height:1.25}
+.result .wide{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:8px;font-size:14px}
+.result .wide b{font-size:18px;color:var(--leaf)}
+.msg{font-size:14px;border-left:4px solid var(--leaf);padding:4px 10px;background:var(--leaf-soft);border-radius:0 8px 8px 0;margin:0}
+.msg.warn{border-color:var(--brick);background:#fbe5dc}
+details.more{margin-top:12px;font-size:14px}
+details.more summary{cursor:pointer;font-family:var(--display);font-size:16px;color:var(--ink)}
+details.more p{margin:6px 0 0;color:var(--muted)}
+.nav{display:flex;gap:8px;margin-top:14px}
+.btn{border:2px solid var(--ink);background:#fff;border-radius:12px;padding:8px 14px;font-family:var(--display);font-size:16px}
+.btn.primary{background:var(--ink);color:#fff}
+.btn.go{background:var(--leaf);border-color:var(--leaf);color:#fff}
+.nav .btn{flex:1}
+
+/* SVG 장면 */
+.pin{cursor:pointer}
+.pin circle.bg{fill:var(--ink);stroke:#fff;stroke-width:3}
+.pin text{fill:#fff;font-family:var(--display);font-size:14px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.pin.done circle.bg{fill:var(--leaf)}
+.pin.tried circle.bg{fill:var(--sun)}
+.pin.tried text{fill:var(--ink)}
+.pin.cur circle.ring{stroke:var(--sun);stroke-width:4;fill:none}
+.pin circle.ring{fill:none;stroke:transparent}
+.pin:hover circle.bg,.pin:focus circle.bg{transform-box:fill-box;transform-origin:center;transform:scale(1.12)}
+.pin:focus{outline:none}
+.pin:focus-visible circle.ring{stroke:var(--sun)}
+.bulb{fill:#ffd65a;filter:drop-shadow(0 0 4px #ffd65a);transition:fill .3s}
+.bulb.off{fill:#c7cfd4;filter:none}
+.led{fill:#e34a3a}
+.led.off{fill:#8a979f}
+.shade{fill:#1e3a4c;transition:opacity .4s}
+.hide{display:none}
+.lbl{font-family:var(--display);font-size:13px;fill:var(--ink)}
+.lbl-s{font-family:var(--body);font-size:11px;fill:var(--muted)}
+@keyframes walk{from{transform:translateX(0)}to{transform:translateX(70px)}}
+@keyframes drive{from{transform:translateX(-30px)}to{transform:translateX(60px)}}
+.walking{animation:walk 4s linear infinite alternate}
+.driving{animation:drive 3s ease-in-out infinite alternate}
+@keyframes grow{from{transform:scale(.2)}to{transform:scale(1)}}
+.tree-g{transform-box:fill-box;transform-origin:bottom center;animation:grow .6s ease-out}
+@media (prefers-reduced-motion:reduce){.walking,.driving,.tree-g{animation:none}}
+
+/* 결과 */
+.res-top{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:center}
+@media (max-width:760px){.res-top{grid-template-columns:1fr}}
+.earth-box{text-align:center}
+.earth-box p{margin:4px 0 0;font-family:var(--display);font-size:18px}
+.big{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--sky);border-radius:14px;padding:12px 14px}
+.tile span{font-size:13px;color:var(--muted);display:block}
+.tile b{font-family:var(--display);font-weight:400;font-size:30px;font-variant-numeric:tabular-nums;line-height:1.2}
+.tile small{display:block;font-size:12px;color:var(--muted);line-height:1.4}
+.sec{margin-top:26px}
+.sec h3{font-size:22px;margin-bottom:4px}
+.sec > p{margin:0 0 12px;color:var(--muted);max-width:75ch}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:130px 1fr 70px;gap:10px;align-items:center;font-size:14px}
+.bar .track{background:var(--sky);border-radius:8px;height:20px;overflow:hidden}
+.bar .fill{height:100%;border-radius:8px;transition:width .5s}
+.bar b{font-variant-numeric:tabular-nums;text-align:right;font-weight:400;font-family:var(--display);font-size:16px}
+.levels{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.lv{border:2px solid var(--line);background:#fff;border-radius:22px;padding:6px 14px;font-size:15px}
+.lv[aria-pressed="true"]{background:var(--leaf);border-color:var(--leaf);color:#fff}
+.scale-box{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;align-items:start}
+@media (max-width:860px){.scale-box{grid-template-columns:1fr}}
+.forest{background:#eef7ee;border-radius:14px;padding:12px}
+.forest svg{width:100%;height:auto;display:block}
+.forest p{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.eq{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.eq .tile b{font-size:24px}
+.eq .tile.wide{grid-column:1/-1}
+.note{font-size:13px;color:var(--muted);background:var(--sun-soft);border-radius:10px;padding:10px 12px;margin-top:12px}
+.note p{margin:0 0 4px}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{font-family:var(--display);font-weight:400;color:var(--muted);font-size:14px}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+th.n{text-align:right}
+.pledge{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:760px){.pledge{grid-template-columns:1fr}}
+.pledge textarea{width:100%;min-height:90px;border:2px solid var(--line);border-radius:12px;padding:10px;font-family:var(--body);font-size:15px;resize:vertical}
+.card{border:3px solid var(--leaf);border-radius:18px;padding:18px;background:linear-gradient(180deg,#fff, var(--leaf-soft))}
+.card h4{font-size:22px;color:var(--leaf)}
+.card .who{font-size:13px;color:var(--muted)}
+.card ul{margin:8px 0;padding-left:20px;font-size:14px}
+.card .say{font-family:var(--display);font-size:18px;margin:8px 0 0}
+.todo{display:flex;flex-wrap:wrap;gap:6px}
+footer{font-size:13px;color:var(--muted);padding:0 0 30px}
+footer p{margin:0 0 4px;max-width:90ch}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#5bb0d8"/><path d="M10 16c4-4 9-2 10 2s-3 6 0 9 7 0 8 4-4 7-8 6" fill="#3f9e64"/><path d="M26 8c3 1 6 4 6 7s-4 3-5 1-4-3-1-8z" fill="#3f9e64"/><circle cx="17" cy="21" r="1.6" fill="#1e3a4c"/><circle cx="27" cy="21" r="1.6" fill="#1e3a4c"/><path d="M17 27q5 4 10 0" stroke="#1e3a4c" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      <div><h1>지구를 지키는 하루</h1><small>학교와 우리 집에서 해 보는 탄소중립 실천 시뮬레이션</small></div>
+    </div>
+    <div class="score" aria-live="polite">
+      <div class="chip co2"><b id="t-kg">0kg</b><span>1년에 줄인 CO₂</span></div>
+      <div class="chip tree"><b id="t-tree">0그루</b><span>소나무가 흡수하는 만큼</span></div>
+      <div class="chip won"><b id="t-won">0원</b><span>우리 집이 아낀 돈(1년)</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="tabs" role="tablist" aria-label="장소 선택">
+    <button class="tab" role="tab" id="tab-school" data-view="school" aria-selected="true">🏫 학교 <span class="cnt" id="c-school">0/10</span></button>
+    <button class="tab" role="tab" id="tab-home" data-view="home" aria-selected="false">🏠 우리 집 <span class="cnt" id="c-home">0/17</span></button>
+    <button class="tab" role="tab" id="tab-result" data-view="result" aria-selected="false">🌏 결과 보기</button>
+  </nav>
+
+  <!-- 학교 -->
+  <section class="view" id="view-school" role="tabpanel" aria-labelledby="tab-school">
+    <div class="intro">
+      <div>
+        <h2>우리 학교에서 하루를 보내요</h2>
+        <p>그림 속 번호를 누르거나 아래 목록에서 골라 실천해 보세요. 고를 때마다 그림이 바뀌고, 1년 동안 줄어드는 이산화탄소(CO₂) 양이 계산돼요.</p>
+      </div>
+    </div>
+    <div class="stage">
+      <div>
+        <div class="scene">
+<svg id="svg-school" viewBox="0 0 800 520" role="img" aria-label="학교 그림: 교실, 복사실, 급식실, 화장실, 화단, 분리배출장, 등굣길">
+  <defs>
+    <linearGradient id="skyg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe3f3"/><stop offset="1" stop-color="#eaf6fb"/></linearGradient>
+    <g id="tree"><rect x="-3" y="-14" width="6" height="14" fill="#8a5a33"/><path d="M0 -52 L16 -22 L8 -22 L20 -6 L-20 -6 L-8 -22 L-16 -22 Z" fill="#2f8f5b"/></g>
+  </defs>
+  <rect width="800" height="520" fill="url(#skyg)"/>
+  <circle cx="720" cy="60" r="30" fill="#f8c94a"/>
+  <g fill="#fff" opacity=".9"><ellipse cx="110" cy="60" rx="40" ry="14"/><ellipse cx="140" cy="50" rx="28" ry="14"/><ellipse cx="560" cy="45" rx="34" ry="11"/></g>
+  <rect y="430" width="800" height="90" fill="#9fd08a"/>
+  <rect y="458" width="800" height="62" fill="#7b8a93"/>
+  <g fill="#fff"><rect x="330" y="462" width="12" height="54"/><rect x="352" y="462" width="12" height="54"/><rect x="374" y="462" width="12" height="54"/><rect x="396" y="462" width="12" height="54"/></g>
+  <g stroke="#f4f4f4" stroke-width="3" stroke-dasharray="20 18"><line x1="0" y1="489" x2="320" y2="489"/><line x1="420" y1="489" x2="800" y2="489"/></g>
+
+  <!-- 건물 -->
+  <rect x="168" y="96" width="464" height="340" fill="#f2e3c9" stroke="#b99a6e" stroke-width="3"/>
+  <rect x="160" y="86" width="480" height="20" fill="#c9714c"/>
+  <rect x="330" y="98" width="140" height="30" rx="6" fill="#fff" stroke="#b99a6e"/>
+  <text x="400" y="118" text-anchor="middle" class="lbl">푸른별 초등학교</text>
+  <line x1="168" y1="287" x2="632" y2="287" stroke="#b99a6e" stroke-width="4"/>
+  <line x1="442" y1="136" x2="442" y2="287" stroke="#b99a6e" stroke-width="3"/>
+  <line x1="404" y1="287" x2="404" y2="436" stroke="#b99a6e" stroke-width="3"/>
+  <line x1="168" y1="136" x2="632" y2="136" stroke="#b99a6e" stroke-width="3"/>
+
+  <!-- 2층 교실 -->
+  <rect x="172" y="139" width="268" height="146" fill="#fffaf0"/>
+  <text x="180" y="281" class="lbl-s">6학년 2반 교실</text>
+  <g id="s-bulbs"></g>
+  <rect x="190" y="180" width="120" height="58" rx="3" fill="#2f5d4a" stroke="#8a5a33" stroke-width="4"/>
+  <text x="250" y="214" text-anchor="middle" font-family="Jua" font-size="14" fill="#fff">탄소중립 실천!</text>
+  <g fill="#c99a62"><rect x="196" y="252" width="38" height="10"/><rect x="246" y="252" width="38" height="10"/><rect x="296" y="252" width="38" height="10"/></g>
+  <g fill="#9b7347"><rect x="200" y="262" width="4" height="18"/><rect x="226" y="262" width="4" height="18"/><rect x="250" y="262" width="4" height="18"/><rect x="276" y="262" width="4" height="18"/><rect x="300" y="262" width="4" height="18"/><rect x="326" y="262" width="4" height="18"/></g>
+  <rect x="330" y="186" width="44" height="30" rx="5" fill="#fff" stroke="#1e3a4c" stroke-width="2"/>
+  <text id="s-thermo" x="352" y="206" text-anchor="middle" font-family="Jua" font-size="15" fill="#d46b45">22℃</text>
+  <rect x="384" y="214" width="46" height="32" rx="2" fill="#253845"/><rect x="404" y="246" width="6" height="8" fill="#253845"/>
+  <rect x="384" y="254" width="20" height="26" fill="#3b4f5c"/>
+  <rect x="372" y="276" width="62" height="8" rx="2" fill="#fff" stroke="#888"/>
+  <g id="s-leds"></g>
+  <rect id="s-room-shade" class="shade" x="172" y="139" width="268" height="146" opacity="0"/>
+
+  <!-- 2층 복사실 -->
+  <rect x="445" y="139" width="184" height="146" fill="#f7f3ea"/>
+  <text x="452" y="281" class="lbl-s">교무실·복사실</text>
+  <rect x="470" y="226" width="96" height="46" rx="6" fill="#dfe6ea" stroke="#5a7383" stroke-width="2"/>
+  <rect x="480" y="216" width="76" height="12" fill="#fff" stroke="#5a7383"/>
+  <g id="s-paper"></g>
+  <rect x="580" y="170" width="38" height="104" fill="#c99a62"/>
+  <g fill="#fff" stroke="#c6d9e2"><rect x="584" y="176" width="30" height="20"/><rect x="584" y="202" width="30" height="20"/><rect x="584" y="228" width="30" height="20"/></g>
+
+  <!-- 1층 급식실 -->
+  <rect x="172" y="290" width="230" height="143" fill="#fff5e6"/>
+  <text x="180" y="428" class="lbl-s">급식실</text>
+  <rect x="190" y="380" width="160" height="10" fill="#c99a62"/>
+  <g id="s-trays"></g>
+  <rect x="356" y="326" width="36" height="66" rx="4" fill="#e6f0f5" stroke="#5a7383" stroke-width="2"/>
+  <rect x="364" y="336" width="20" height="16" fill="#9fd6f0"/>
+  <g id="s-cups"></g>
+
+  <!-- 1층 화장실 -->
+  <rect x="407" y="290" width="222" height="143" fill="#eef6f9"/>
+  <text x="414" y="428" class="lbl-s">화장실</text>
+  <rect x="424" y="310" width="90" height="34" rx="4" fill="#cfe7f2" stroke="#9cbfcf"/>
+  <rect x="420" y="364" width="100" height="14" rx="4" fill="#fff" stroke="#9cbfcf" stroke-width="2"/>
+  <path d="M446 364v-10h10" stroke="#7d8b93" stroke-width="4" fill="none"/>
+  <path d="M486 364v-10h10" stroke="#7d8b93" stroke-width="4" fill="none"/>
+  <g id="s-drops" fill="#5bb0d8"><circle cx="456" cy="360" r="2"/><circle cx="496" cy="360" r="2"/></g>
+  <rect x="560" y="320" width="50" height="32" rx="6" fill="#dfe6ea" stroke="#5a7383" stroke-width="2"/>
+  <text x="585" y="341" text-anchor="middle" class="lbl-s">드라이어</text>
+  <g id="s-hanky" class="hide"><rect x="560" y="374" width="30" height="22" fill="#f6a5b9"/><path d="M560 374l30 22M590 374l-30 22" stroke="#fff" stroke-width="2"/></g>
+  <g id="s-brushcup" class="hide"><rect x="500" y="348" width="12" height="16" rx="2" fill="#f3b23a"/><line x1="506" y1="348" x2="510" y2="336" stroke="#5bb0d8" stroke-width="3"/></g>
+
+  <!-- 화단 -->
+  <rect x="18" y="404" width="140" height="30" rx="8" fill="#8a5a33"/>
+  <text x="88" y="424" text-anchor="middle" font-family="Jua" font-size="13" fill="#fff">학교 숲 화단</text>
+  <g id="s-trees"></g>
+
+  <!-- 분리배출장 -->
+  <rect x="644" y="340" width="146" height="94" rx="6" fill="#e9eef0" stroke="#9fb0ba"/>
+  <text x="717" y="356" text-anchor="middle" class="lbl">분리배출장</text>
+  <g id="s-bins"></g>
+
+  <!-- 등굣길 -->
+  <g id="s-car"><g class="driving"><rect x="470" y="470" width="74" height="24" rx="8" fill="#d46b45"/><rect x="486" y="458" width="42" height="18" rx="6" fill="#d46b45"/><rect x="492" y="462" width="30" height="10" fill="#cfe7f2"/><circle cx="488" cy="496" r="8" fill="#253845"/><circle cx="528" cy="496" r="8" fill="#253845"/><g fill="#b9c3c9" opacity=".8"><circle cx="462" cy="488" r="6"/><circle cx="450" cy="484" r="8"/><circle cx="436" cy="480" r="10"/></g></g></g>
+  <g id="s-walkers" class="hide"><g class="walking">
+    <g transform="translate(200,456)"><circle cx="0" cy="0" r="7" fill="#f2c9a0"/><rect x="-7" y="7" width="14" height="20" rx="4" fill="#5bb0d8"/><rect x="-9" y="9" width="6" height="14" rx="2" fill="#f3b23a"/><line x1="-3" y1="27" x2="-5" y2="40" stroke="#253845" stroke-width="3"/><line x1="3" y1="27" x2="6" y2="40" stroke="#253845" stroke-width="3"/></g>
+    <g transform="translate(228,458)"><circle cx="0" cy="0" r="7" fill="#e7b88e"/><rect x="-7" y="7" width="14" height="20" rx="4" fill="#2f8f5b"/><rect x="2" y="9" width="7" height="14" rx="2" fill="#d46b45"/><line x1="-3" y1="27" x2="-6" y2="38" stroke="#253845" stroke-width="3"/><line x1="3" y1="27" x2="5" y2="38" stroke="#253845" stroke-width="3"/></g>
+  </g></g>
+
+  <g id="pins-school"></g>
+</svg>
+          <div class="legend"><span><i style="background:var(--ink)"></i>아직 안 해 봤어요</span><span><i style="background:var(--sun)"></i>골랐지만 효과 0</span><span><i style="background:var(--leaf)"></i>실천 완료</span></div>
+        </div>
+        <div class="actlist" id="list-school"></div>
+      </div>
+      <aside class="panel" id="panel-school" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <!-- 우리 집 -->
+  <section class="view hide" id="view-home" role="tabpanel" aria-labelledby="tab-home">
+    <div class="intro">
+      <div>
+        <h2>우리 집에서 하루를 보내요</h2>
+        <p>집 안 곳곳과 마트, 차고에 숨은 실천 17가지가 있어요. 가족과 함께 할 수 있는 일을 골라 보세요. 전기·물·연료를 아끼면 요금도 줄어들어요.</p>
+      </div>
+    </div>
+    <div class="stage">
+      <div>
+        <div class="scene">
+<svg id="svg-home" viewBox="0 0 800 520" role="img" aria-label="우리 집 그림: 침실, 욕실, 거실, 주방, 다용도실, 마트, 차고">
+  <defs><linearGradient id="skyg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe3f3"/><stop offset="1" stop-color="#eaf6fb"/></linearGradient></defs>
+  <rect width="800" height="520" fill="url(#skyg2)"/>
+  <circle cx="80" cy="60" r="28" fill="#f8c94a"/>
+  <g fill="#fff" opacity=".9"><ellipse cx="700" cy="70" rx="44" ry="14"/><ellipse cx="730" cy="60" rx="26" ry="12"/></g>
+  <rect y="430" width="800" height="90" fill="#9fd08a"/>
+  <rect y="458" width="800" height="62" fill="#7b8a93"/>
+  <g stroke="#f4f4f4" stroke-width="3" stroke-dasharray="20 18"><line x1="0" y1="489" x2="800" y2="489"/></g>
+
+  <!-- 마트 -->
+  <rect x="12" y="300" width="120" height="132" fill="#fbe2c8" stroke="#c9714c" stroke-width="2"/>
+  <rect x="6" y="286" width="132" height="20" fill="#2f8f5b"/>
+  <text x="72" y="301" text-anchor="middle" font-family="Jua" font-size="14" fill="#fff">동네 마트</text>
+  <rect x="24" y="320" width="96" height="44" fill="#cfe7f2" stroke="#9cbfcf"/>
+  <g fill="#f3b23a"><circle cx="40" cy="352" r="7"/><circle cx="56" cy="350" r="7"/></g><g fill="#2f8f5b"><circle cx="78" cy="350" r="7"/><circle cx="96" cy="352" r="7"/></g><circle cx="108" cy="348" r="6" fill="#d46b45"/>
+  <rect x="52" y="380" width="40" height="52" fill="#9b7347"/>
+  <g id="h-bag"><path d="M20 402h22l-3 26h-16z" fill="#fff" stroke="#9fb0ba"/><text x="31" y="420" text-anchor="middle" class="lbl-s">비닐</text></g>
+  <g id="h-ecobag" class="hide"><path d="M18 400h26l-2 28h-22z" fill="#2f8f5b"/><path d="M24 400q7-12 14 0" stroke="#2f8f5b" stroke-width="3" fill="none"/></g>
+  <g id="h-deliv"><rect x="96" y="410" width="34" height="22" fill="#c99a62" stroke="#8a5a33"/><text x="113" y="425" text-anchor="middle" class="lbl-s" fill="#fff">배달</text></g>
+
+  <!-- 집 -->
+  <polygon points="134,142 396,40 658,142" fill="#c9714c"/>
+  <rect x="150" y="140" width="492" height="294" fill="#f7ead6" stroke="#b99a6e" stroke-width="3"/>
+  <line x1="150" y1="284" x2="642" y2="284" stroke="#b99a6e" stroke-width="4"/>
+  <line x1="396" y1="140" x2="396" y2="284" stroke="#b99a6e" stroke-width="3"/>
+  <line x1="336" y1="284" x2="336" y2="434" stroke="#b99a6e" stroke-width="3"/>
+  <line x1="526" y1="284" x2="526" y2="434" stroke="#b99a6e" stroke-width="3"/>
+
+  <!-- 침실 -->
+  <rect x="152" y="142" width="242" height="140" fill="#fdf6ea"/>
+  <text x="160" y="278" class="lbl-s">침실</text>
+  <rect x="176" y="236" width="150" height="34" rx="6" fill="#fff" stroke="#c6d9e2" stroke-width="2"/>
+  <rect id="h-mat" x="186" y="238" width="132" height="12" rx="4" fill="#ff7b54" opacity=".85"/>
+  <rect x="170" y="216" width="20" height="54" rx="4" fill="#9b7347"/>
+  <rect x="196" y="230" width="34" height="10" rx="4" fill="#cfe7f2"/>
+  <rect x="340" y="190" width="40" height="40" fill="#cfe7f2" stroke="#9cbfcf" stroke-width="3"/>
+
+  <!-- 욕실 -->
+  <rect x="398" y="142" width="242" height="140" fill="#eef6f9"/>
+  <text x="406" y="278" class="lbl-s">욕실</text>
+  <rect x="420" y="238" width="60" height="16" rx="4" fill="#fff" stroke="#9cbfcf" stroke-width="2"/>
+  <path d="M446 238v-10h12" stroke="#7d8b93" stroke-width="4" fill="none"/>
+  <rect x="540" y="180" width="80" height="94" fill="#e2eef3" stroke="#9cbfcf"/>
+  <circle cx="580" cy="192" r="9" fill="#9fb0ba"/>
+  <g id="h-shower" fill="#5bb0d8"><circle cx="572" cy="210" r="2.5"/><circle cx="580" cy="216" r="2.5"/><circle cx="588" cy="210" r="2.5"/><circle cx="576" cy="230" r="2.5"/><circle cx="584" cy="236" r="2.5"/><circle cx="572" cy="250" r="2.5"/><circle cx="588" cy="252" r="2.5"/><circle cx="580" cy="262" r="2.5"/></g>
+
+  <!-- 거실 -->
+  <rect x="152" y="287" width="182" height="145" fill="#fffaf0"/>
+  <text x="160" y="428" class="lbl-s">거실</text>
+  <rect x="168" y="318" width="86" height="54" rx="3" fill="#253845"/>
+  <rect id="h-tvscreen" x="173" y="323" width="76" height="44" fill="#6fc2e8"/>
+  <text id="h-tvtext" x="211" y="350" text-anchor="middle" font-family="Jua" font-size="12" fill="#fff">TV 켜짐</text>
+  <rect x="190" y="372" width="42" height="8" fill="#9b7347"/>
+  <rect x="262" y="370" width="64" height="30" rx="8" fill="#5bb0d8"/>
+  <rect x="268" y="356" width="52" height="18" rx="6" fill="#4a9cc4"/>
+  <rect x="252" y="342" width="22" height="10" rx="2" fill="#fff" stroke="#9fb0ba"/>
+  <rect x="236" y="408" width="88" height="14" rx="3" fill="#fff" stroke="#888"/>
+  <g id="h-leds"></g>
+  <rect id="h-room-shade" class="shade" x="152" y="142" width="488" height="290" opacity="0"/>
+
+  <!-- 주방 -->
+  <rect x="339" y="287" width="185" height="145" fill="#fff5e6"/>
+  <text x="346" y="428" class="lbl-s">주방</text>
+  <rect x="344" y="378" width="120" height="50" fill="#c99a62"/>
+  <rect x="344" y="372" width="120" height="8" fill="#e6d3b8"/>
+  <rect x="358" y="350" width="32" height="24" rx="8" fill="#fff" stroke="#5a7383" stroke-width="2"/>
+  <circle id="h-riceled" cx="374" cy="364" r="3" class="led"/>
+  <rect x="408" y="372" width="40" height="8" fill="#9fb0ba"/>
+  <path d="M428 372v-14h10" stroke="#7d8b93" stroke-width="3" fill="none"/>
+  <g id="h-tap" fill="#5bb0d8"><rect x="437" y="360" width="2" height="12"/></g>
+  <rect id="h-foodbin" x="440" y="402" width="18" height="22" fill="#8bb174" stroke="#5c7f48"/>
+  <rect x="468" y="300" width="50" height="128" rx="4" fill="#eef2f4" stroke="#5a7383" stroke-width="2"/>
+  <line x1="468" y1="346" x2="518" y2="346" stroke="#5a7383" stroke-width="2"/>
+  <g id="h-fridge"></g>
+
+  <!-- 다용도실 -->
+  <rect x="529" y="287" width="111" height="145" fill="#f2f4f4"/>
+  <text x="536" y="428" class="lbl-s">다용도실</text>
+  <rect x="538" y="370" width="48" height="56" rx="4" fill="#fff" stroke="#5a7383" stroke-width="2"/>
+  <circle cx="562" cy="400" r="15" fill="#cfe7f2" stroke="#5a7383" stroke-width="2"/>
+  <text id="h-wash" x="562" y="404" text-anchor="middle" font-family="Jua" font-size="11" fill="#1e3a4c">주4회</text>
+  <rect x="592" y="300" width="40" height="52" rx="4" fill="#fff" stroke="#5a7383" stroke-width="2"/>
+  <text x="612" y="316" text-anchor="middle" class="lbl-s">보일러</text>
+  <text id="h-thermo" x="612" y="338" text-anchor="middle" font-family="Jua" font-size="14" fill="#d46b45">22℃</text>
+
+  <!-- 차고 -->
+  <rect x="664" y="360" width="128" height="74" fill="#dfe6ea" stroke="#9fb0ba"/>
+  <polygon points="658,362 728,326 798,362" fill="#9fb0ba"/>
+  <g id="h-car"><rect x="676" y="398" width="76" height="24" rx="8" fill="#5bb0d8"/><rect x="690" y="386" width="44" height="16" rx="6" fill="#5bb0d8"/><circle cx="694" cy="424" r="8" fill="#253845"/><circle cx="736" cy="424" r="8" fill="#253845"/></g>
+  <g id="h-bikeg" class="hide"><circle cx="762" cy="420" r="10" fill="none" stroke="#2f8f5b" stroke-width="3"/><circle cx="738" cy="420" r="10" fill="none" stroke="#2f8f5b" stroke-width="3"/><path d="M738 420l10-14 14 14M748 406h10" stroke="#2f8f5b" stroke-width="3" fill="none"/></g>
+  <rect x="756" y="296" width="4" height="64" fill="#5a7383"/>
+  <rect x="740" y="282" width="36" height="20" rx="4" fill="#2f8f5b"/>
+  <text x="758" y="296" text-anchor="middle" font-family="Jua" font-size="11" fill="#fff">버스</text>
+  <g id="h-bus" class="hide"><g class="driving"><rect x="300" y="460" width="120" height="40" rx="8" fill="#2f8f5b"/><g fill="#cfe7f2"><rect x="310" y="466" width="18" height="14"/><rect x="334" y="466" width="18" height="14"/><rect x="358" y="466" width="18" height="14"/><rect x="382" y="466" width="18" height="14"/></g><circle cx="330" cy="502" r="8" fill="#253845"/><circle cx="392" cy="502" r="8" fill="#253845"/></g></g>
+  <g id="h-road-car"><g class="driving"><rect x="470" y="470" width="74" height="24" rx="8" fill="#d46b45"/><rect x="486" y="458" width="42" height="18" rx="6" fill="#d46b45"/><circle cx="488" cy="496" r="8" fill="#253845"/><circle cx="528" cy="496" r="8" fill="#253845"/><g fill="#b9c3c9" opacity=".8"><circle cx="462" cy="488" r="6"/><circle cx="450" cy="484" r="8"/></g></g></g>
+
+  <g id="pins-home"></g>
+</svg>
+          <div class="legend"><span><i style="background:var(--ink)"></i>아직 안 해 봤어요</span><span><i style="background:var(--sun)"></i>골랐지만 효과 0</span><span><i style="background:var(--leaf)"></i>실천 완료</span></div>
+        </div>
+        <div class="actlist" id="list-home"></div>
+      </div>
+      <aside class="panel" id="panel-home" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <!-- 결과 -->
+  <section class="view hide" id="view-result" role="tabpanel" aria-labelledby="tab-result">
+    <div class="res-top">
+      <div class="earth-box">
+        <svg id="earth" viewBox="0 0 220 220" width="220" height="220" role="img" aria-label="지구 건강 그림"></svg>
+        <p id="earth-say">지구가 기다리고 있어요</p>
+      </div>
+      <div>
+        <h2 style="font-size:28px">나의 탄소중립 성적표</h2>
+        <p style="margin:4px 0 12px;color:var(--muted)">내가 고른 실천을 1년 동안 꾸준히 했을 때의 효과예요.</p>
+        <div class="big">
+          <div class="tile"><span>1년에 줄인 이산화탄소</span><b id="r-kg">0kg</b><small id="r-kg2"></small></div>
+          <div class="tile"><span>30년 된 소나무로 바꾸면</span><b id="r-tree">0그루</b><small>1그루가 1년에 9.1kg 흡수</small></div>
+          <div class="tile"><span>우리 집이 아낀 요금(1년)</span><b id="r-won">0원</b><small>전기·가스·수도·연료비</small></div>
+          <div class="tile"><span>해 본 실천</span><b id="r-cnt">0 / 27</b><small id="r-cnt2"></small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>어느 분야에서 많이 줄였을까?</h3>
+      <p>안내서의 다섯 분야로 나눠 봤어요.</p>
+      <div class="bars" id="r-bars"></div>
+    </div>
+
+    <div class="sec">
+      <h3>많은 사람이 같은 선택을 한다면?</h3>
+      <p>나 혼자 줄인 양은 작아 보여도, 같은 선택을 하는 사람이 늘어나면 효과가 커져요. 버튼을 눌러 함께하는 사람 수를 바꿔 보세요.</p>
+      <div class="levels" id="levels" role="group" aria-label="함께하는 사람 수"></div>
+      <div class="scale-box">
+        <div class="forest">
+          <svg id="forest" viewBox="0 0 400 230" role="img" aria-label="소나무 숲 그림"></svg>
+          <p id="forest-cap"></p>
+        </div>
+        <div>
+          <div class="eq">
+            <div class="tile wide"><span id="eq-who">함께하는 사람</span><b id="eq-t">0kg</b><small>1년에 줄어드는 이산화탄소</small></div>
+            <div class="tile"><span>소나무 숲</span><b id="eq-tree">0그루</b><small>이만큼 심은 것과 같아요</small></div>
+            <div class="tile"><span>자동차가 덜 달린 거리</span><b id="eq-car">0바퀴</b><small id="eq-car2">지구 둘레(약 4만 km) 기준</small></div>
+            <div class="tile"><span>사람으로 치면</span><b id="eq-people">0명</b><small>한국인 1명의 1년 배출량(약 13.4t) 기준</small></div>
+            <div class="tile"><span>우리나라 전체 배출량 중</span><b id="eq-pct">0%</b><small>2024년 약 6억 9,158만 t 기준</small></div>
+            <div class="tile wide"><span>탄소배출권 가격으로 바꾸면</span><b id="eq-money">0원</b><small>1t당 24,574원(안내서 기준)</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="note" id="scale-note"></div>
+    </div>
+
+    <div class="sec">
+      <h3>내가 고른 실천 한눈에 보기</h3>
+      <p>‘전국 10%’는 안내서가 제시한 값이에요. 학교 실천은 전국 학교의 10%, 우리 집 실천은 전국 인구·가구·차량의 10%가 참여할 때를 뜻해요.</p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>장소</th><th>실천</th><th>분야</th><th class="n">나(1년)</th><th class="n">전국 10%가 함께하면</th></tr></thead>
+        <tbody id="r-table"></tbody>
+      </table></div>
+      <div id="r-todo-wrap" class="sec" style="margin-top:16px">
+        <h4 style="font-size:18px">아직 해 보지 않은 실천</h4>
+        <div class="todo" id="r-todo"></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>나의 다짐 카드</h3>
+      <p>가장 꾸준히 할 수 있는 실천 하나를 골라 다짐을 적어 보세요. 카드는 아래에 바로 만들어져요.</p>
+      <div class="pledge">
+        <div>
+          <label for="p-name" style="font-size:14px">이름(별명도 좋아요)</label>
+          <input id="p-name" type="text" maxlength="20" placeholder="예: 6학년 2반 지구지킴이" style="width:100%;border:2px solid var(--line);border-radius:12px;padding:8px 10px;font-family:var(--body);font-size:15px;margin:4px 0 10px">
+          <label for="p-text" style="font-size:14px">나의 다짐</label>
+          <textarea id="p-text" maxlength="120" placeholder="예: 급식실에 갈 때는 꼭 교실 불을 끄고 나갈게요!"></textarea>
+          <div class="nav"><button class="btn" id="p-copy">카드 내용 복사하기</button><button class="btn" id="reset">처음부터 다시 하기</button></div>
+          <p class="mini" id="p-status" aria-live="polite"></p>
+        </div>
+        <div class="card" id="p-card">
+          <h4>🌏 지구 지킴이 다짐 카드</h4>
+          <div class="who" id="pc-who">이름을 적어 주세요</div>
+          <ul id="pc-list"></ul>
+          <p class="say" id="pc-say">“다짐을 적어 주세요”</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>자료: 「탄소중립 생활 실천 안내서」 본편 가정의 탄생(가정편)·학교의 탄생(학교편)의 실천수칙별 연간 이산화탄소 감축량, 비용 절감액, 10% 참여 효과, 소나무 흡수량(30년생 중부지방 소나무 1그루 9.1kg/년), 배출권 평균 가격(24,574원/t).</p>
+    <p>국가 배출량: 환경부 온실가스종합정보센터 2024년 국가 온실가스 잠정배출량(6억 9,158만 t). 자동차 거리는 휘발유 1L당 2.18kg(안내서 배출계수)과 연비 12km/L를 가정해 계산했어요. 모든 숫자는 공부를 돕기 위한 어림값이며 실제 상황에 따라 달라질 수 있어요.</p>
+  </footer>
+</main>
+
+<script>
+(function(){
+"use strict";
+const TREE=9.1, PRICE=24574, NATION_T=691580000, PER_CAPITA_T=13.4, KG_PER_KM=2.18/12, EARTH_KM=40075;
+const SCHOOL10_PEOPLE=564953; // 전국 초·중·고 학생+교원의 10%
+const CATS={에너지:"#e0a224",소비:"#c0607a",이동:"#3d8fc4",자원순환:"#8a6bc2",자연:"#2f8f5b"};
+const PER={학급:24,가구:2.2,인:1,대:2.2,그루:1};
+
+/* ---------- 실천 목록 (안내서 수치) ---------- */
+const ACTS=[
+// 학교
+{id:"s_light",scene:"school",x:432,y:156,cat:"에너지",place:"우리 교실",title:"빈 교실의 조명은 소등해요",
+ q:"점심시간이에요. 모두 급식실로 갔는데 교실 불 12개가 켜져 있어요. 전구를 눌러 꺼 보세요.",
+ kind:"toggles",items:Array.from({length:12},(_,i)=>"조명 "+(i+1)),onLabel:"켜짐",offLabel:"꺼짐",
+ base:32.72,unit:"학급",nat:772,
+ info:"학급당 조명 12개를 점심시간 1시간 동안 끄는 것으로 계산했어요. 1년에 학급당 약 33kg, 전국 학교의 10%가 함께하면 772t이 줄어요.",
+ tip:"창가 쪽 조명은 햇빛이 밝을 때 꺼도 충분히 밝아요. 마지막에 나가는 사람이 끄는 ‘소등 당번’을 정해 보세요."},
+{id:"s_standby",scene:"school",x:410,y:200,cat:"에너지",place:"우리 교실",title:"전자기기 대기전력을 차단해요",
+ q:"수업이 끝났어요. 꺼진 것처럼 보여도 플러그가 꽂혀 있으면 전기가 새요(대기전력). 멀티탭 스위치를 꺼 볼까요?",
+ kind:"toggles",items:["컴퓨터 본체","모니터","전자칠판","프린터"],onLabel:"대기 중",offLabel:"차단",
+ base:3.28*4,unit:"학급",nat:1247,
+ info:"기기 1대당 하루 16시간 대기전력을 막으면 1년에 약 3kg이 줄어요. 전국 학교 10%가 함께하면 1,247t이에요.",
+ tip:"개별 스위치가 달린 멀티탭을 쓰면 퇴근·하교할 때 한 번에 끌 수 있어요."},
+{id:"s_temp",scene:"school",x:352,y:174,cat:"에너지",place:"우리 교실",title:"난방 2℃ 낮추고, 냉방 2℃ 높여요",
+ q:"교실 온도 조절기예요. 겨울 난방 온도와 여름 냉방 온도를 정해 보세요. 겨울엔 옷을 한 겹 더, 여름엔 시원한 옷을 입어요.",
+ kind:"thermo",base:98.43,unit:"학급",nat:2322,
+ info:"학급(실내 50㎡)에서 난방 온도를 2℃ 낮추면 약 64kg, 냉방 온도를 2℃ 높이면 약 34kg이 줄어 합쳐서 약 98kg이에요.",
+ tip:"공공기관 권장 온도는 겨울 18~20℃, 여름 26~28℃ 정도예요. 내복·카디건이 좋은 친구예요."},
+{id:"s_paper",scene:"school",x:520,y:196,cat:"자원순환",place:"교무실·복사실",title:"인쇄할 때 종이를 줄여요",
+ q:"학급 신문을 인쇄하려고 해요. 종이를 아끼는 방법을 모두 골라 보세요.",
+ kind:"checklist",unit:"인",items:[
+  {label:"양면으로 인쇄하기",kg:5,nat:2911},{label:"여러 쪽을 한 장에 모아찍기",kg:5,nat:2911},{label:"꼭 필요한 것만 인쇄하고 화면으로 보기",kg:5,nat:2912}],
+ info:"종이 사용을 절반으로 줄이면 1인당 1년에 약 15kg이 줄어요. 전국 학교 10%가 함께하면 8,734t이에요.",
+ tip:"한 면만 쓴 종이는 연습장(이면지)으로 다시 써요. 종이 1t을 만드는 데 나무 24그루가 필요해요."},
+{id:"s_food",scene:"school",x:250,y:340,cat:"자원순환",place:"급식실",title:"음식은 먹을 만큼만 담아요",
+ q:"오늘 급식은 카레라이스예요. 어떻게 담을까요?",
+ kind:"choice",base:0.32,unit:"인",nat:181,options:[
+  {label:"일단 가득 담고, 배부르면 남긴다",frac:0,msg:"남긴 음식은 쓰레기가 되어 썩으면서 메탄 같은 온실가스를 내뿜어요."},
+  {label:"먹을 만큼만 담고 남기지 않는다",frac:1,msg:"잘했어요! 음식물 쓰레기를 10% 줄인 효과예요."},
+  {label:"조금 담고, 모자라면 더 받으러 간다",frac:1,msg:"좋은 방법이에요! 남기는 음식이 없어요."}],
+ info:"음식물 쓰레기를 10% 줄이면 1인당 1년에 약 0.3kg, 전국 학교 10%가 함께하면 181t이 줄어요.",
+ tip:"양은 작아 보여도 음식을 만들고 옮기는 데 든 에너지까지 버려지는 거예요. ‘잔반 0 데이’를 만들어 보세요."},
+{id:"s_cup",scene:"school",x:376,y:316,cat:"자원순환",place:"급식실 정수기",title:"다회용 컵(텀블러)을 써요",
+ q:"하루에 종이컵을 몇 개나 텀블러로 바꿀 수 있을까요?",
+ kind:"slider",min:0,max:5,step:1,start:0,base:56.55,unit:"인",nat:31946,
+ fmt:v=>v+"개",frac:v=>v/5,tickL:"0개",tickR:"하루 5개",
+ info:"하루에 종이컵 5개를 줄이면 1인당 1년에 약 57kg이 줄어요. 전국 학교 10%가 함께하면 31,946t이에요.",
+ tip:"현장체험학습이나 운동회처럼 야외 행사에서도 텀블러를 챙겨요."},
+{id:"s_restroom",scene:"school",x:500,y:312,cat:"자원순환",place:"화장실",title:"손수건·양치컵·절수기",
+ q:"화장실에서 할 수 있는 실천이에요. 해 볼 것을 모두 골라 보세요.",
+ kind:"checklist",unit:"인",items:[
+  {label:"종이 타월·핸드 드라이어 대신 개인 손수건 쓰기",kg:35.64,nat:20134},
+  {label:"양치할 때 물 틀어 두지 않고 양치컵 쓰기",kg:0.28,nat:158},
+  {label:"학교에 절수 설비 설치를 건의하기",kg:11.22,nat:6338}],
+ info:"손수건 사용은 1인당 약 36kg, 절수 설비는 약 11kg, 양치컵은 약 0.3kg을 줄여요. 물을 깨끗하게 만들고 보내는 데도 전기가 들어서 물을 아끼면 탄소도 줄어요.",
+ tip:"종이 타월은 나무로 만들고, 표백할 때 나온 폐수가 환경을 오염시켜요."},
+{id:"s_recycle",scene:"school",x:716,y:332,cat:"자원순환",place:"분리배출장",title:"분리배출 게임",
+ q:"쓰레기를 하나 고른 다음, 알맞은 수거함을 눌러요. 8개를 모두 정확히 넣어 보세요!",
+ kind:"sort",base:18.53,unit:"인",nat:10468,
+ bins:["종이","플라스틱","비닐","캔·유리","일반쓰레기"],
+ sortItems:[["택배 상자(테이프 떼기)",0],["다 쓴 공책",0],["라벨 뗀 투명 페트병",1],["헹군 요구르트 병",1],["과자 봉지",2],["음료 캔",3],["유리병",3],["음식 묻은 휴지",4]],
+ info:"투명 페트병을 제대로 분리배출하면 1인당 1년에 약 19kg이 줄어요. 전국 학교 10%가 함께하면 10,468t이에요.",
+ tip:"‘비우고, 헹구고, 분리하고, 섞지 않기’가 분리배출의 4가지 원칙이에요. 음식이 묻은 휴지는 재활용이 안 돼요."},
+{id:"s_tree",scene:"school",x:88,y:356,cat:"자연",place:"학교 숲 화단",title:"나무를 심어요",
+ q:"학교 화단에 나무를 심어 볼까요? 나무는 자라면서 공기 속 이산화탄소를 빨아들여요.",
+ kind:"plant",max:5,unit:"그루",
+ info:"30년 자란 소나무 1그루는 1년에 이산화탄소 약 9.1kg을 흡수해요. 어린 나무는 처음엔 조금씩 흡수하다가 자랄수록 더 많이 흡수해요.",
+ tip:"숲, 습지, 갯벌, 바다도 이산화탄소를 흡수하는 ‘탄소흡수원’이에요. 학교 숲을 아끼고 가꿔 주세요."},
+{id:"s_walk",scene:"school",x:410,y:446,cat:"이동",place:"등굣길",title:"걸어서 학교에 가요",
+ q:"집에서 학교까지 1.5km예요(왕복 3km). 내일은 어떻게 등교할까요?",
+ kind:"choice",base:30,unit:"인",nat:16953,options:[
+  {label:"부모님 차를 타고 간다",frac:0,msg:"자동차는 휘발유 1L를 쓸 때마다 이산화탄소 2.18kg을 내뿜어요."},
+  {label:"걸어서 간다",frac:1,msg:"건강도 지키고 지구도 지켜요!"},
+  {label:"친구들과 함께 걸어서 간다",frac:1,msg:"함께 걸으면 더 즐겁고 안전해요!"}],
+ info:"왕복 3km를 자동차 대신 걸어서 다니면 1인당 1년에 약 30kg이 줄어요. 전국 학교 10%가 함께하면 16,953t이에요.",
+ tip:"먼 거리는 버스·지하철 같은 대중교통을 이용해요."},
+// 우리 집
+{id:"h_light",scene:"home",x:396,y:118,cat:"에너지",place:"집 전체",title:"불필요한 조명은 꺼요",
+ q:"아무도 없는 방에 불이 켜져 있어요. 전구를 눌러 꺼 보세요.",
+ kind:"toggles",items:["침실 1","침실 2","욕실","거실 1","거실 2","주방"],onLabel:"켜짐",offLabel:"꺼짐",
+ base:251,won:112794,unit:"가구",nat:539897,
+ info:"불필요한 조명을 하루 10시간 끄면 가구당 1년에 약 251kg, 전기요금 약 11만 원을 아껴요.",
+ tip:"방을 나올 때 ‘딸깍’ 습관! LED 전구로 바꾸면 효과가 더 커져요."},
+{id:"h_blanket",scene:"home",x:250,y:222,cat:"에너지",place:"침실",title:"전기장판 사용 시간을 줄여요",
+ q:"전기장판은 전기를 많이 써요. 하루에 몇 시간을 줄일 수 있을까요?",
+ kind:"slider",min:0,max:5,step:1,start:0,base:315,won:141250,unit:"가구",nat:676111,
+ fmt:v=>v+"시간",frac:v=>v/5,tickL:"0시간",tickR:"하루 5시간",
+ info:"하루 5시간을 줄이면 가구당 1년에 약 315kg, 전기요금 약 14만 원을 아껴요.",
+ tip:"잠들기 전 미리 데워 두고, 잘 때는 끄거나 온도를 낮춰요. 두꺼운 이불도 도움이 돼요."},
+{id:"h_faucet",scene:"home",x:520,y:206,cat:"에너지",place:"욕실",title:"절수 샤워기·절수기를 달아요",
+ q:"샤워기에서 물이 콸콸 나와요. 가족에게 절수 샤워기를 달자고 제안해 볼까요?",
+ kind:"choice",base:25,won:77942,unit:"가구",nat:53068,options:[
+  {label:"지금 샤워기를 그대로 쓴다",frac:0,msg:"물을 정수하고 보내는 데도 전기가 들어요."},
+  {label:"절수 샤워기와 절수기를 단다",frac:1,msg:"물도 아끼고 수도·가스 요금도 줄어요!"}],
+ info:"절수 설비를 설치해 쓰면 가구당 1년에 약 25kg, 요금 약 7.8만 원을 아껴요.",
+ tip:"샤워 시간을 1분 줄이는 것도 좋은 방법이에요."},
+{id:"h_tv",scene:"home",x:212,y:304,cat:"에너지",place:"거실",title:"텔레비전 시청 시간을 줄여요",
+ q:"TV를 하루에 몇 시간 덜 볼 수 있을까요? 그 시간에 책을 읽거나 산책을 해 봐요.",
+ kind:"slider",min:0,max:4.5,step:0.5,start:0,base:73,won:32609,unit:"대",nat:157190,
+ fmt:v=>v+"시간",frac:v=>Math.min(1,v/4.53),tickL:"0시간",tickR:"하루 4.5시간",
+ info:"하루 약 4.5시간을 줄이면 TV 1대당 1년에 약 73kg, 전기요금 약 3.3만 원을 아껴요.",
+ tip:"보지 않을 때는 ‘틀어 놓기’ 대신 꺼 두어요."},
+{id:"h_standby",scene:"home",x:280,y:394,cat:"에너지",place:"거실",title:"가전제품 대기전력을 차단해요",
+ q:"멀티탭에 빨간 불이 들어온 플러그들이 있어요. 쓰지 않는 것은 꺼 볼까요?",
+ kind:"toggles",items:["셋톱박스","컴퓨터","전자레인지","휴대폰 충전기","오디오","공기청정기"],onLabel:"대기 중",offLabel:"차단",
+ base:85,won:38124,unit:"가구",nat:182472,
+ info:"대기전력의 85%를 막으면 가구당 1년에 약 85kg, 전기요금 약 3.8만 원을 아껴요.",
+ tip:"‘대기전력 저감 우수제품’ 표시가 있는 제품을 고르면 좋아요."},
+{id:"h_wipes",scene:"home",x:300,y:330,cat:"자원순환",place:"거실",title:"물티슈 대신 행주·손수건",
+ q:"물티슈는 플라스틱 섬유가 섞여 있어 잘 썩지 않아요. 하루에 몇 장을 줄일 수 있을까요?",
+ kind:"slider",min:0,max:5,step:1,start:0,base:16,unit:"인",nat:81373,
+ fmt:v=>v+"장",frac:v=>v/5,tickL:"0장",tickR:"하루 5장",
+ info:"하루 5장을 줄이면 1인당 1년에 약 16kg이 줄어요. 전국 10%가 함께하면 81,373t이에요.",
+ tip:"물티슈는 재활용이 안 되니 일반쓰레기로 버려요."},
+{id:"h_rice",scene:"home",x:374,y:336,cat:"에너지",place:"주방",title:"전기밥솥 보온 시간을 줄여요",
+ q:"밥솥이 하루 종일 보온 중이에요. 어떻게 할까요?",
+ kind:"choice",base:458,won:205544,unit:"가구",nat:810076,options:[
+  {label:"하루 종일 보온해 둔다",frac:0,msg:"보온은 생각보다 전기를 많이 써요."},
+  {label:"먹을 만큼 짓고, 남은 밥은 냉동해 두고 보온을 끈다",frac:1,msg:"하루 약 9시간 보온을 줄인 효과예요!"}],
+ info:"보온 시간을 하루 9.3시간 줄이면 가구당 1년에 약 458kg, 전기요금 약 21만 원을 아껴요. 우리 집 실천 중 효과가 큰 편이에요.",
+ tip:"남은 밥은 1인분씩 냉동해 두었다가 데워 먹으면 맛도 좋아요."},
+{id:"h_dish",scene:"home",x:430,y:346,cat:"소비",place:"주방",title:"물은 받아서 설거지해요",
+ q:"설거지할 시간이에요. 어떻게 할까요?",
+ kind:"choice",base:8,won:25541,unit:"가구",nat:17381,options:[
+  {label:"물을 틀어 놓고 설거지한다",frac:0,msg:"흘려보내는 물이 많아요."},
+  {label:"설거지통에 물을 받아서 한다",frac:1,msg:"물 사용량이 60%나 줄어요!"}],
+ info:"물을 받아서 설거지하면 가구당 1년에 약 8kg, 수도요금 약 2.6만 원을 아껴요.",
+ tip:"양치할 때도 컵에 물을 받아 써요."},
+{id:"h_food",scene:"home",x:449,y:396,cat:"자원순환",place:"주방",title:"음식물 쓰레기를 줄여요",
+ q:"냉장고 속 재료로 저녁을 만들어요. 어떻게 할까요?",
+ kind:"choice",base:0.5,unit:"인",nat:2592,options:[
+  {label:"새로 장을 보고, 남은 재료는 버린다",frac:0,msg:"버려진 음식이 썩으면 온실가스가 나와요."},
+  {label:"있는 재료를 먼저 쓰고, 먹을 만큼만 만든다",frac:1,msg:"음식물 쓰레기를 10% 줄였어요!"}],
+ info:"음식물 쓰레기를 10% 줄이면 1인당 1년에 약 0.5kg, 전국 10%가 함께하면 2,592t이 줄어요.",
+ tip:"장보기 전에 냉장고를 확인하고 필요한 것만 적어 가요."},
+{id:"h_fridge",scene:"home",x:493,y:300,cat:"에너지",place:"주방",title:"냉장고는 60%만 채워요",
+ q:"냉장고가 꽉 차서 찬 공기가 돌지 못해요. 오래된 음식을 꺼내 60%만 채워 볼까요?",
+ kind:"fridge",base:42,won:18670,unit:"대",nat:138718,
+ fridgeItems:["유통기한 지난 우유","오래된 반찬","남은 소스","시든 채소","김치","달걀","주스","과일","두부"],
+ info:"냉장고를 60%만 채우면 냉장고 1대당 1년에 약 42kg, 전기요금 약 1.9만 원을 아껴요. 반대로 냉동실은 꽉 채울수록 좋아요.",
+ tip:"문을 열기 전에 꺼낼 것을 미리 정하고, 문은 빨리 닫아요."},
+{id:"h_laundry",scene:"home",x:562,y:356,cat:"에너지",place:"다용도실",title:"빨래는 모아서 해요",
+ q:"우리 집은 일주일에 세탁기를 4번 돌려요. 빨래를 모아서 하면 어떨까요?",
+ kind:"choice",base:9,won:3874,unit:"대",nat:16930,options:[
+  {label:"지금처럼 주 4회",frac:0,msg:"조금씩 자주 돌리면 물과 전기가 더 들어요."},
+  {label:"모아서 주 3회",frac:1,msg:"세탁 횟수를 1회 줄였어요!"}],
+ info:"세탁기 사용을 주 4회에서 3회로 줄이면 1대당 1년에 약 9kg, 요금 약 3,900원을 아껴요.",
+ tip:"찬물 세탁, 자연 건조도 에너지를 아끼는 방법이에요."},
+{id:"h_temp",scene:"home",x:612,y:282,cat:"에너지",place:"다용도실",title:"난방 2℃ 낮추고, 냉방 2℃ 높여요",
+ q:"보일러와 에어컨 온도를 얼마나 바꿔 볼까요? 겨울엔 낮추고, 여름엔 높여요.",
+ kind:"slider",min:0,max:2,step:0.5,start:0,base:150,won:57282,unit:"가구",nat:323048,
+ fmt:v=>v+"℃",frac:v=>v/2,tickL:"그대로",tickR:"2℃ 조절",
+ info:"난방 2℃ 낮추고 냉방 2℃ 높이면 가구당 1년에 약 150kg, 요금 약 5.7만 원을 아껴요.",
+ tip:"겨울엔 내복과 카디건, 여름엔 선풍기를 함께 쓰면 쾌적해요."},
+{id:"h_market",scene:"home",x:72,y:270,cat:"소비",place:"동네 마트",title:"장바구니 들고 제철 식재료 사기",
+ q:"가족과 장을 보러 왔어요. 할 수 있는 것을 모두 골라 보세요.",
+ kind:"checklist",unit:"인",items:[
+  {label:"비닐봉투 대신 장바구니 쓰기",kg:25,nat:131234},
+  {label:"우리 지역에서 난 제철 식재료 고르기",kg:132,nat:682186}],
+ info:"비닐봉투를 쓰지 않으면 1인당 약 25kg, 우리 지역 제철 식재료를 고르면 약 132kg이 줄어요. 멀리서 비행기·배로 오는 음식은 운반할 때 탄소가 많이 나와요.",
+ tip:"‘저탄소 인증’ 표시가 있는 농산물을 찾아보세요."},
+{id:"h_delivery",scene:"home",x:113,y:398,cat:"자원순환",place:"현관",title:"배달 음식 1회용품 줄이기",
+ q:"오늘 저녁은 배달 음식이에요. 주문할 때 어떻게 할까요?",
+ kind:"choice",base:2,unit:"인",nat:11921,options:[
+  {label:"수저·포크도 다 받는다",frac:0,msg:"집에 있는 수저를 쓰면 쓰레기가 줄어요."},
+  {label:"‘1회용 수저 안 받기’를 누르고, 포장은 다회용기로",frac:1,msg:"1회용품 쓰레기를 줄였어요!"}],
+ info:"주 2회 배달·포장 때 1회용품을 줄이면 1인당 1년에 약 2kg이 줄어요.",
+ tip:"가까운 가게는 다회용기를 들고 직접 포장해 와요."},
+{id:"h_bus",scene:"home",x:758,y:262,cat:"이동",place:"버스 정류장",title:"주말 나들이는 대중교통으로",
+ q:"주말에 가족과 박물관에 가요. 일주일에 한 번, 자동차 대신 버스·지하철을 타 볼까요?",
+ kind:"choice",base:242,won:178598,unit:"대",nat:518113,options:[
+  {label:"자동차로 간다",frac:0,msg:"자동차 1대에는 보통 1~2명만 타요."},
+  {label:"버스와 지하철을 탄다",frac:1,msg:"주 1회 대중교통을 이용한 효과예요!"}],
+ info:"주 1회 자동차 대신 대중교통을 이용하면 차 1대당 1년에 약 242kg, 연료비 약 18만 원을 아껴요.",
+ tip:"알뜰교통카드·K-패스처럼 대중교통비를 돌려주는 제도도 있어요."},
+{id:"h_bike",scene:"home",x:700,y:340,cat:"이동",place:"차고",title:"가까운 거리는 걷거나 자전거로",
+ q:"집 근처 학원과 도서관(하루 3km)까지 어떻게 다닐까요?",
+ kind:"choice",base:147,won:108381,unit:"대",nat:314436,options:[
+  {label:"부모님이 차로 데려다주신다",frac:0,msg:"짧은 거리를 자주 운전하면 연료가 많이 들어요."},
+  {label:"걷거나 자전거를 탄다",frac:1,msg:"운동도 되고 연료비도 아껴요!"}],
+ info:"매일 3km를 걷거나 자전거로 다니면 차 1대당 1년에 약 147kg, 연료비 약 11만 원을 아껴요.",
+ tip:"자전거를 탈 때는 꼭 헬멧을 써요."},
+{id:"h_eco",scene:"home",x:610,y:470,cat:"이동",place:"도로",title:"부모님께 친환경 운전 제안하기",
+ q:"차를 탈 때 부모님께 이렇게 부탁해 볼까요? 해 볼 것을 모두 골라요.",
+ kind:"checklist",unit:"대",items:[
+  {label:"경제속도(시속 60~80km) 지키기",kg:169.9,won:125375,nat:363707},
+  {label:"기다릴 때 공회전하지 않기(시동 끄기)",kg:300.5,won:221769,nat:643354},
+  {label:"트렁크의 불필요한 짐 빼기",kg:27.6,won:20348,nat:59048}],
+ info:"세 가지를 모두 하면 차 1대당 1년에 약 498kg, 연료비 약 37만 원을 아껴요. 우리 집 실천 중 효과가 아주 큰 편이에요.",
+ tip:"급출발·급제동을 하지 않는 것도 연료를 아끼는 방법이에요."}
+];
+ACTS.forEach(a=>{a.per=PER[a.unit]||1});
+const byId=Object.fromEntries(ACTS.map(a=>[a.id,a]));
+const school=ACTS.filter(a=>a.scene==="school"), home=ACTS.filter(a=>a.scene==="home");
+school.forEach((a,i)=>a.n=i+1); home.forEach((a,i)=>a.n=i+1);
+
+/* ---------- 상태 ---------- */
+const S={};
+function initState(a){
+  switch(a.kind){
+    case"toggles":return a.items.map(()=>false);
+    case"checklist":return a.items.map(()=>false);
+    case"slider":return a.start;
+    case"thermo":return {w:22,s:24};
+    case"choice":return null;
+    case"sort":return {};
+    case"fridge":return a.fridgeItems.map(()=>true);
+    case"plant":return 0;
+  }
+}
+function resetAll(){ACTS.forEach(a=>{S[a.id]={v:initState(a),touched:false}})}
+resetAll();
+try{const saved=JSON.parse(localStorage.getItem("eco-day-v1")||"null");if(saved)for(const k in saved)if(S[k])S[k]=saved[k]}catch(e){}
+function save(){try{localStorage.setItem("eco-day-v1",JSON.stringify(S))}catch(e){}}
+
+/* ---------- 계산 ---------- */
+function calc(a){
+  const st=S[a.id].v; let f=0,kg=0,won=0,nat=0;
+  switch(a.kind){
+    case"toggles":f=st.filter(Boolean).length/st.length;break;
+    case"slider":f=a.frac(st);break;
+    case"choice":f=st==null?0:a.options[st].frac;break;
+    case"thermo":{const h=Math.min(2,Math.max(0,22-st.w)),c=Math.min(2,Math.max(0,st.s-24));kg=64.48*h/2+33.95*c/2;nat=a.nat*kg/a.base;return{kg,won:0,nat};}
+    case"checklist":a.items.forEach((it,i)=>{if(st[i]){kg+=it.kg;won+=it.won||0;nat+=it.nat}});return{kg,won,nat};
+    case"sort":{let c=0;a.sortItems.forEach((it,i)=>{if(st[i]===it[1])c++});f=c/a.sortItems.length;break;}
+    case"fridge":{const filled=st.filter(Boolean).length;f=Math.min(3,Math.max(0,9-filled))/3;break;}
+    case"plant":kg=TREE*st;return{kg,won:0,nat:kg*SCHOOL10_PEOPLE/1000};
+  }
+  return{kg:a.base*f,won:(a.won||0)*f,nat:a.nat*f};
+}
+function totals(list){let kg=0,won=0,nat=0,people=0;(list||ACTS).forEach(a=>{const r=calc(a);kg+=r.kg;won+=r.won;nat+=r.nat;people+=r.kg/a.per});return{kg,won,nat,perPerson:people}}
+function status(a){const r=calc(a);if(r.kg>0)return"done";if(S[a.id].touched)return"tried";return""}
+
+/* ---------- 숫자 표시 ---------- */
+const nf=new Intl.NumberFormat("ko-KR");
+function kgStr(kg){if(kg>=1e6)return tStr(kg/1000);if(kg>=1000)return nf.format(Math.round(kg/100)/10)+"t";if(kg>=10)return nf.format(Math.round(kg))+"kg";if(kg>0)return (Math.round(kg*10)/10)+"kg";return"0kg"}
+function big(n){ // 큰 수를 만/억 단위로
+  if(n>=1e8){const e=n/1e8;return (e>=100?nf.format(Math.round(e)):(Math.round(e*10)/10))+"억 "}
+  if(n>=1e4){const m=n/1e4;return (m>=100?nf.format(Math.round(m)):(Math.round(m*10)/10))+"만 "}
+  return nf.format(Math.round(n))+" ";
+}
+function bigStr(n,u){const s=big(n);return s.trim()+u}
+function tStr(t){if(t<1)return kgStr(t*1000);return bigStr(t,"t").replace(/ t$/,"t")}
+function wonStr(w){return w>=1e4?bigStr(w,"원").replace(/ 원$/,"원"):nf.format(Math.round(w))+"원"}
+function treeStr(kg){const n=kg/TREE;if(n<1&&n>0)return(Math.round(n*10)/10)+"그루";return bigStr(n,"그루").replace(/ 그루$/,"그루")}
+
+/* ---------- 장면 그리기 ---------- */
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+function buildStatic(){
+  const sb=document.getElementById("s-bulbs");
+  for(let i=0;i<12;i++){const x=188+i*20;el("line",{x1:x,y1:139,x2:x,y2:148,stroke:"#7d8b93","stroke-width":2},sb);el("circle",{cx:x,cy:153,r:6,class:"bulb",id:"sb"+i},sb)}
+  const sl=document.getElementById("s-leds");for(let i=0;i<4;i++)el("circle",{cx:382+i*14,cy:280,r:3,class:"led",id:"sl"+i},sl);
+  const bins=document.getElementById("s-bins"),cols=["#5bb0d8","#f3b23a","#c0607a","#3d8fc4","#7d8b93"],names=["종이","플라","비닐","캔병","일반"];
+  for(let i=0;i<5;i++){const x=650+i*28;el("rect",{x,y:372,width:24,height:58,rx:3,fill:cols[i]},bins);el("rect",{x:x+2,y:428,width:20,height:0,fill:"#fff",opacity:.6,id:"sbin"+i},bins);const t=el("text",{x:x+12,y:388,"text-anchor":"middle",class:"lbl-s",fill:"#fff","font-size":10},bins);t.textContent=names[i]}
+  // 집 조명
+  const hb=document.createElementNS(NS,"g");hb.id="h-bulbs";document.getElementById("svg-home").insertBefore(hb,document.getElementById("h-room-shade"));
+  [[230,152],[320,152],[470,152],[200,297],[280,297],[420,297]].forEach((p,i)=>{el("line",{x1:p[0],y1:p[1]-12,x2:p[0],y2:p[1]-6,stroke:"#7d8b93","stroke-width":2},hb);el("circle",{cx:p[0],cy:p[1],r:7,class:"bulb",id:"hb"+i},hb)});
+  const hl=document.getElementById("h-leds");for(let i=0;i<6;i++)el("circle",{cx:246+i*13,cy:415,r:3,class:"led",id:"hl"+i},hl);
+  // 핀
+  ["school","home"].forEach(sc=>{
+    const g=document.getElementById("pins-"+sc);
+    ACTS.filter(a=>a.scene===sc).forEach(a=>{
+      const p=el("g",{class:"pin",tabindex:"0",role:"button","data-id":a.id,"aria-label":a.n+"번 "+a.title,transform:`translate(${a.x},${a.y})`},g);
+      el("circle",{r:19,class:"ring"},p);el("circle",{r:14,class:"bg"},p);const t=el("text",{},p);t.textContent=a.n;
+      p.addEventListener("click",()=>select(sc,a.id));
+      p.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(sc,a.id)}});
+    });
+  });
+}
+function show(id,on){const e=document.getElementById(id);if(e)e.classList.toggle("hide",!on)}
+function updateScene(){
+  // 학교
+  const L=S.s_light.v;L.forEach((off,i)=>document.getElementById("sb"+i).classList.toggle("off",off));
+  document.getElementById("s-room-shade").setAttribute("opacity",(L.filter(Boolean).length/12*0.22).toFixed(2));
+  S.s_standby.v.forEach((off,i)=>document.getElementById("sl"+i).classList.toggle("off",off));
+  document.getElementById("s-thermo").textContent=S.s_temp.v.w+"℃";
+  const P=document.getElementById("s-paper");P.innerHTML="";const sheets=6-2*S.s_paper.v.filter(Boolean).length;for(let i=0;i<sheets;i++)el("rect",{x:486+i*3,y:248-i*4,width:44,height:18,fill:"#fff",stroke:"#c6d9e2"},P);
+  const T=document.getElementById("s-trays");T.innerHTML="";const fc=S.s_food.v;
+  for(let i=0;i<3;i++){const x=200+i*50;el("rect",{x,y:366,width:40,height:14,rx:3,fill:"#9fb0ba"},T);if(fc===0)el("ellipse",{cx:x+20,cy:368,rx:12,ry:6,fill:"#e0a224"},T);else if(fc==null)el("ellipse",{cx:x+20,cy:369,rx:8,ry:4,fill:"#e0a224"},T)}
+  if(fc===0){const t=el("text",{x:275,y:356,"text-anchor":"middle",class:"lbl-s",fill:"#d46b45"},T);t.textContent="남은 음식…"}
+  const C=document.getElementById("s-cups");C.innerHTML="";const tum=S.s_cup.v;
+  for(let i=0;i<5;i++){const x=232+i*22;if(i<tum)el("rect",{x,y:330,width:12,height:22,rx:3,fill:"#2f8f5b"},C);else el("path",{d:`M${x} 336h12l-2 16h-8z`,fill:"#fff",stroke:"#9fb0ba"},C)}
+  const R=S.s_restroom.v;show("s-hanky",R[0]);show("s-brushcup",R[1]);show("s-drops",!R[1]);
+  const st=S.s_recycle.v,cnt=[0,0,0,0,0];byId.s_recycle.sortItems.forEach((it,i)=>{if(st[i]===it[1])cnt[it[1]]++});
+  cnt.forEach((c,i)=>{const r=document.getElementById("sbin"+i);const h=Math.min(1,c/2)*36;r.setAttribute("height",h);r.setAttribute("y",428-h)});
+  const TR=document.getElementById("s-trees");TR.innerHTML="";for(let i=0;i<S.s_tree.v;i++){const u=el("use",{href:"#tree",x:30+i*26,y:404,class:"tree-g"},TR)}
+  const w=S.s_walk.v;show("s-car",!(w===1||w===2));show("s-walkers",w===1||w===2);
+  // 집
+  const HL=S.h_light.v;HL.forEach((off,i)=>document.getElementById("hb"+i).classList.toggle("off",off));
+  document.getElementById("h-room-shade").setAttribute("opacity",(HL.filter(Boolean).length/6*0.2).toFixed(2));
+  S.h_standby.v.forEach((off,i)=>document.getElementById("hl"+i).classList.toggle("off",off));
+  document.getElementById("h-mat").setAttribute("opacity",(0.9*(1-S.h_blanket.v/5)+0.05).toFixed(2));
+  const tv=S.h_tv.v;document.getElementById("h-tvscreen").setAttribute("fill",tv>=4.5?"#253845":"#6fc2e8");document.getElementById("h-tvtext").textContent=tv>0?("하루 "+tv+"시간 덜 보기"):"TV 켜짐";
+  document.getElementById("h-thermo").textContent=(22-S.h_temp.v)+"℃";
+  document.getElementById("h-riceled").classList.toggle("off",S.h_rice.v===1);
+  show("h-shower",S.h_faucet.v!==1);document.getElementById("h-tap").style.display=S.h_dish.v===1?"none":"";
+  const F=document.getElementById("h-fridge");F.innerHTML="";const fs=S.h_fridge.v;let k=0;
+  fs.forEach((on,i)=>{if(on){const col=k%3,row=Math.floor(k/3);el("rect",{x:472+col*15,y:350+row*24,width:12,height:18,rx:2,fill:["#f3b23a","#c0607a","#5bb0d8","#2f8f5b","#d46b45"][i%5]},F);k++}});
+  document.getElementById("h-wash").textContent=S.h_laundry.v===1?"주3회":"주4회";
+  document.getElementById("h-foodbin").setAttribute("fill",S.h_food.v===1?"#cfe2c2":"#8bb174");
+  const M=S.h_market.v;show("h-bag",!M[0]);show("h-ecobag",M[0]);
+  document.getElementById("h-deliv").setAttribute("opacity",S.h_delivery.v===1?.4:1);
+  show("h-bus",S.h_bus.v===1);show("h-bikeg",S.h_bike.v===1);
+  const carGone=S.h_bus.v===1&&S.h_bike.v===1;show("h-road-car",!(S.h_bus.v===1));show("h-car",!(S.h_bike.v===1));
+  // 핀
+  document.querySelectorAll(".pin").forEach(p=>{const a=byId[p.dataset.id];const s=status(a);p.classList.toggle("done",s==="done");p.classList.toggle("tried",s==="tried");p.classList.toggle("cur",cur[a.scene]===a.id)});
+}
+
+/* ---------- 활동 목록·패널 ---------- */
+const cur={school:"s_light",home:"h_light"};
+function buildLists(){
+  ["school","home"].forEach(sc=>{
+    const box=document.getElementById("list-"+sc);box.innerHTML="";
+    ACTS.filter(a=>a.scene===sc).forEach(a=>{
+      const b=document.createElement("button");b.className="actbtn";b.dataset.id=a.id;
+      b.innerHTML=`<span class="num">${a.n}</span><span>${a.title}</span>`;
+      b.addEventListener("click",()=>select(sc,a.id));box.appendChild(b);
+    });
+  });
+}
+function updateLists(){
+  document.querySelectorAll(".actbtn").forEach(b=>{const a=byId[b.dataset.id];const s=status(a);b.classList.toggle("done",s==="done");b.classList.toggle("tried",s==="tried");b.setAttribute("aria-current",cur[a.scene]===a.id?"true":"false")});
+  ["school","home"].forEach(sc=>{const l=ACTS.filter(a=>a.scene===sc);document.getElementById("c-"+sc).textContent=l.filter(a=>status(a)==="done").length+"/"+l.length});
+}
+function select(sc,id){cur[sc]=id;renderPanel(sc);updateLists();updateScene();
+  if(window.innerWidth<=900){document.getElementById("panel-"+sc).scrollIntoView({behavior:"smooth",block:"start"})}}
+
+function renderPanel(sc){
+  const a=byId[cur[sc]],box=document.getElementById("panel-"+sc),st=S[a.id];
+  const list=ACTS.filter(x=>x.scene===sc),idx=list.indexOf(a);
+  box.innerHTML=`<div class="place"><span class="cat" style="background:${CATS[a.cat]}">${a.cat}</span>${a.n}번 · ${a.place}</div>
+    <h3>${a.title}</h3><p class="q">${a.q}</p><div class="body" id="body-${sc}"></div>
+    <div class="result" id="res-${sc}"></div>
+    <details class="more"><summary>더 알아보기</summary><p>${a.info}</p><p>💡 ${a.tip}</p></details>
+    <div class="nav"><button class="btn" id="prev-${sc}" ${idx===0?"disabled":""}>← 이전</button>
+    ${idx<list.length-1?`<button class="btn primary" id="next-${sc}">다음 실천 →</button>`:`<button class="btn go" id="next-${sc}">${sc==="school"?"우리 집으로 →":"결과 보기 →"}</button>`}</div>`;
+  const body=document.getElementById("body-"+sc);
+  const touch=()=>{st.touched=true;afterChange(sc)};
+  if(a.kind==="toggles"){
+    const g=document.createElement("div");g.className="grid-btn";
+    a.items.forEach((lab,i)=>{const b=document.createElement("button");b.className="tog";b.setAttribute("aria-pressed",st.v[i]);
+      const set=()=>{b.innerHTML=`<span class="dot"></span>${lab} · ${st.v[i]?a.offLabel:a.onLabel}`;b.setAttribute("aria-pressed",st.v[i])};set();
+      b.addEventListener("click",()=>{st.v[i]=!st.v[i];set();touch()});g.appendChild(b)});
+    const all=document.createElement("button");all.className="btn";all.textContent="한꺼번에 모두 끄기";all.style.alignSelf="flex-start";
+    all.addEventListener("click",()=>{st.v=st.v.map(()=>true);st.touched=true;renderPanel(sc);afterChange(sc)});
+    body.append(g,all);
+  }else if(a.kind==="checklist"){
+    a.items.forEach((it,i)=>{const b=document.createElement("button");b.className="tog chk";b.style.justifyContent="flex-start";b.style.textAlign="left";
+      const set=()=>{b.innerHTML=`<span class="dot"></span><span>${it.label} <small style="color:var(--muted)">(${kgStr(it.kg)}/년)</small></span>`;b.setAttribute("aria-pressed",st.v[i])};set();
+      b.addEventListener("click",()=>{st.v[i]=!st.v[i];set();touch()});body.appendChild(b)});
+  }else if(a.kind==="choice"){
+    a.options.forEach((o,i)=>{const b=document.createElement("button");b.className="opt"+(o.frac===0?" bad":"");b.setAttribute("aria-pressed",st.v===i);
+      b.innerHTML=`<span>${o.label}</span>`;b.addEventListener("click",()=>{st.v=i;st.touched=true;renderPanel(sc);afterChange(sc)});body.appendChild(b)});
+    if(st.v!=null){const m=document.createElement("p");m.className="msg"+(a.options[st.v].frac===0?" warn":"");m.textContent=a.options[st.v].msg;body.appendChild(m)}
+  }else if(a.kind==="slider"){
+    const id="sl-"+a.id;const d=document.createElement("div");d.className="slider";
+    d.innerHTML=`<label for="${id}"><span>하루에 줄이는 양</span><b id="${id}-v">${a.fmt(st.v)}</b></label><input type="range" id="${id}" min="${a.min}" max="${a.max}" step="${a.step}" value="${st.v}"><div class="ticks"><span>${a.tickL}</span><span>${a.tickR}</span></div>`;
+    body.appendChild(d);const inp=d.querySelector("input");
+    inp.addEventListener("input",()=>{st.v=parseFloat(inp.value);document.getElementById(id+"-v").textContent=a.fmt(st.v);touch()});
+  }else if(a.kind==="thermo"){
+    const d=document.createElement("div");d.className="body";d.style.margin=0;
+    d.innerHTML=`<div class="slider"><label for="th-w"><span>❄️ 겨울 난방 온도</span><b id="th-wv">${st.v.w}℃</b></label><input type="range" id="th-w" min="18" max="24" step="1" value="${st.v.w}"><div class="ticks"><span>18℃</span><span>지금 22℃</span><span>24℃</span></div></div>
+    <div class="slider"><label for="th-s"><span>☀️ 여름 냉방 온도</span><b id="th-sv">${st.v.s}℃</b></label><input type="range" id="th-s" min="22" max="28" step="1" value="${st.v.s}"><div class="ticks"><span>22℃</span><span>지금 24℃</span><span>28℃</span></div></div>
+    <p class="mini">난방은 22℃에서, 냉방은 24℃에서 최대 2℃까지 바꾼 만큼 계산해요.</p>`;
+    body.appendChild(d);
+    d.querySelector("#th-w").addEventListener("input",e=>{st.v.w=+e.target.value;document.getElementById("th-wv").textContent=st.v.w+"℃";touch()});
+    d.querySelector("#th-s").addEventListener("input",e=>{st.v.s=+e.target.value;document.getElementById("th-sv").textContent=st.v.s+"℃";touch()});
+  }else if(a.kind==="sort"){
+    let pick=null;
+    const items=document.createElement("div");items.className="sort-items";
+    const bins=document.createElement("div");bins.className="bins";
+    const msg=document.createElement("p");msg.className="mini";msg.setAttribute("aria-live","polite");
+    const draw=()=>{items.innerHTML="";a.sortItems.forEach((it,i)=>{const b=document.createElement("button");b.className="item";const placed=st.v[i];
+        if(placed===it[1]){b.classList.add("ok");b.textContent="✓ "+it[0];b.disabled=true}
+        else{if(placed!=null)b.classList.add("no");b.textContent=it[0];b.setAttribute("aria-pressed",pick===i);b.addEventListener("click",()=>{pick=i;draw();msg.textContent="‘"+it[0]+"’을(를) 어느 수거함에 넣을까요?"})}
+        items.appendChild(b)});
+      const c=a.sortItems.filter((it,i)=>st.v[i]===it[1]).length;if(c===a.sortItems.length)msg.textContent="완벽해요! 8개 모두 정확하게 분리했어요.";};
+    a.bins.forEach((bn,bi)=>{const b=document.createElement("button");b.className="bin";const c=()=>a.sortItems.filter((it,i)=>st.v[i]===bi&&it[1]===bi).length;
+      b.innerHTML=`${bn}<small>수거함</small>`;b.addEventListener("click",()=>{if(pick==null){msg.textContent="먼저 위에서 쓰레기를 하나 골라요.";return}
+        const it=a.sortItems[pick];st.v[pick]=bi;msg.textContent=it[1]===bi?"딩동댕! ‘"+it[0]+"’은(는) "+bn+"이에요.":"앗, 다시 생각해 봐요. ‘"+it[0]+"’은(는) "+bn+"이 아니에요.";pick=null;draw();touch()});bins.appendChild(b)});
+    draw();body.append(items,bins,msg);
+  }else if(a.kind==="fridge"){
+    const g=document.createElement("div");g.className="grid-btn";const m=document.createElement("p");m.className="mini";
+    const draw=()=>{g.innerHTML="";const filled=st.v.filter(Boolean).length;
+      a.fridgeItems.forEach((n,i)=>{const b=document.createElement("button");b.className="tog";b.setAttribute("aria-pressed",!st.v[i]);b.innerHTML=`<span class="dot"></span>${n}${st.v[i]?"":" · 정리함"}`;
+        b.addEventListener("click",()=>{st.v[i]=!st.v[i];draw();touch()});g.appendChild(b)});
+      const pct=Math.round(filled/10*100);m.innerHTML=`냉장실 채움: <b>${pct}%</b> ${pct<=60?"· 찬 공기가 잘 돌아요! 👍":"· 60% 이하가 되도록 정리해요"}`};
+    draw();body.append(g,m);
+  }else if(a.kind==="plant"){
+    const d=document.createElement("div");d.className="counter";
+    d.innerHTML=`<button aria-label="나무 한 그루 빼기">−</button><b aria-live="polite">${st.v}</b><span>그루 심기 (최대 ${a.max}그루)</span><button aria-label="나무 한 그루 심기">+</button>`;
+    const [minus,plus]=d.querySelectorAll("button"),num=d.querySelector("b");
+    minus.addEventListener("click",()=>{st.v=Math.max(0,st.v-1);num.textContent=st.v;touch()});
+    plus.addEventListener("click",()=>{st.v=Math.min(a.max,st.v+1);num.textContent=st.v;touch()});
+    body.appendChild(d);
+  }
+  document.getElementById("prev-"+sc).addEventListener("click",()=>select(sc,list[idx-1].id));
+  document.getElementById("next-"+sc).addEventListener("click",()=>{if(idx<list.length-1)select(sc,list[idx+1].id);else go(sc==="school"?"home":"result")});
+  updateResult(sc);
+}
+function updateResult(sc){
+  const a=byId[cur[sc]],r=calc(a),box=document.getElementById("res-"+sc);
+  const unitTxt={학급:"우리 반(1학급)",가구:"우리 집(1가구)",인:"나 1명",대:"우리 집 1대",그루:"내가 심은 나무"}[a.unit];
+  box.innerHTML=`<div class="r"><span>1년에 줄어드는 CO₂ · ${unitTxt}</span><b style="color:var(--leaf)">${kgStr(r.kg)}</b></div>
+    <div class="r"><span>소나무로 바꾸면</span><b>${treeStr(r.kg)}</b></div>
+    ${a.won||a.kind==="checklist"&&r.won?`<div class="r"><span>아끼는 요금(1년)</span><b style="color:#b77a10">${wonStr(r.won)}</b></div>`:""}
+    <div class="wide">전국 ${a.scene==="school"?"학교의":"사람·가구의"} 10%가 똑같이 하면 1년에 <b>${tStr(r.nat)}</b> 줄어요${a.kind==="plant"?" (전국 학생·교원 10%가 같은 수를 심었을 때, 추정)":""}.</div>`;
+}
+function afterChange(sc){updateResult(sc);updateScene();updateLists();updateTotals();save()}
+
+/* ---------- 상단 합계 ---------- */
+function updateTotals(){const t=totals();
+  document.getElementById("t-kg").textContent=kgStr(t.kg);document.getElementById("t-tree").textContent=treeStr(t.kg);document.getElementById("t-won").textContent=wonStr(t.won)}
+
+/* ---------- 결과 화면 ---------- */
+const MAXKG=(()=>{let s=0;ACTS.forEach(a=>{if(a.kind==="checklist")a.items.forEach(i=>s+=i.kg);else if(a.kind==="plant")s+=TREE*a.max;else s+=a.base});return s})();
+function drawEarth(score){
+  const e=document.getElementById("earth");const g=Math.round(score*100);
+  const sea=score>.5?"#4fa8d6":score>.2?"#6aa9c4":"#8aa4b0";
+  const land=score>.5?"#3f9e64":score>.2?"#88a35a":"#b39a6a";
+  const mouth=score>.5?"M88 140 Q110 165 132 140":score>.2?"M90 146 Q110 152 130 146":"M90 152 Q110 138 130 152";
+  const sweat=score<=.2?`<path d="M150 80 q6 10 0 14 q-6-4 0-14z" fill="#9fd6f0"/>`:"";
+  e.innerHTML=`<circle cx="110" cy="110" r="96" fill="${sea}"/>
+   <path d="M40 80c18-26 50-30 60-10s-12 28 4 40 34 2 38 22-20 40-44 36-18-26-36-30-30-10-26-34z" fill="${land}"/>
+   <path d="M128 30c22 6 44 24 52 46s-14 18-24 8-34-10-28-54z" fill="${land}"/>
+   <path d="M150 150c12-4 26 4 24 16s-22 20-30 12 0-26 6-28z" fill="${land}"/>
+   <circle cx="88" cy="104" r="7" fill="#1e3a4c"/><circle cx="132" cy="104" r="7" fill="#1e3a4c"/>
+   <circle cx="90" cy="101" r="2.4" fill="#fff"/><circle cx="134" cy="101" r="2.4" fill="#fff"/>
+   ${score>.5?'<circle cx="74" cy="126" r="8" fill="#f6a5b9" opacity=".7"/><circle cx="146" cy="126" r="8" fill="#f6a5b9" opacity=".7"/>':""}
+   <path d="${mouth}" stroke="#1e3a4c" stroke-width="5" fill="none" stroke-linecap="round"/>${sweat}
+   <rect x="196" y="40" width="14" height="140" rx="7" fill="#fff" stroke="#c6d9e2" stroke-width="2"/>
+   <rect x="199" y="${43+134*score}" width="8" height="${134*(1-score)}" rx="4" fill="${score>.5?"#f3b23a":"#d46b45"}"/>`;
+  document.getElementById("earth-say").textContent=score>=.7?"지구가 활짝 웃어요! 정말 고마워요":score>.5?"지구가 웃기 시작했어요":score>.2?"지구 열이 조금씩 내려가요":score>0?"좋은 출발이에요, 더 해 볼까요?":"지구가 기다리고 있어요";
+}
+const LEVELS=[
+ {id:"me",label:"나 혼자",who:"나와 우리 반·우리 집"},
+ {id:"class",label:"우리 반 24명",n:24,who:"우리 반 24명이 모두"},
+ {id:"school",label:"우리 학교 480명",n:480,who:"우리 학교 480명이 모두"},
+ {id:"city",label:"10만 명 도시",n:100000,who:"10만 명이 사는 도시 사람 모두"},
+ {id:"nat10",label:"전국 10%",guide:1,who:"전국의 10%가 (안내서 기준)"},
+ {id:"nat100",label:"전국 모두",guide:10,who:"전국 모두가 (추정)"}];
+let level="nat10";
+function levelKg(){const t=totals();const L=LEVELS.find(l=>l.id===level);
+  if(L.id==="me")return t.kg; if(L.n)return t.perPerson*L.n; return t.nat*1000*L.guide}
+function drawLevels(){const box=document.getElementById("levels");box.innerHTML="";
+  LEVELS.forEach(l=>{const b=document.createElement("button");b.className="lv";b.textContent=l.label;b.setAttribute("aria-pressed",l.id===level);b.addEventListener("click",()=>{level=l.id;drawLevels();drawScale()});box.appendChild(b)})}
+function drawScale(){
+  const kg=levelKg(),t=kg/1000,L=LEVELS.find(l=>l.id===level);
+  document.getElementById("eq-who").textContent=L.who+" 실천하면";
+  document.getElementById("eq-t").textContent=kgStr(kg);
+  document.getElementById("eq-tree").textContent=treeStr(kg);
+  const km=kg/KG_PER_KM,laps=km/EARTH_KM;
+  document.getElementById("eq-car").textContent=laps>=1?bigStr(laps,"바퀴").replace(/ 바퀴$/,"바퀴"):nf.format(Math.round(km))+"km";
+  document.getElementById("eq-car2").textContent=laps>=1?"지구 둘레(약 4만 km)를 이만큼 돈 거리":"자동차가 이만큼 덜 달린 셈이에요";
+  const ppl=t/PER_CAPITA_T;document.getElementById("eq-people").textContent=ppl>=1?bigStr(ppl,"명").replace(/ 명$/,"명"):(Math.round(ppl*1000)/10)+"%";
+  document.querySelector("#eq-people").nextElementSibling.textContent=ppl>=1?"한국인 이만큼이 1년간 내뿜는 양":"한국인 1명이 1년간 내뿜는 양(약 13.4t) 중";
+  const pct=t/NATION_T*100;document.getElementById("eq-pct").textContent=pct>=0.01?(Math.round(pct*100)/100)+"%":pct>0?"0.01% 미만":"0%";
+  document.getElementById("eq-money").textContent=wonStr(t*PRICE);
+  // 숲
+  const trees=kg/TREE,f=document.getElementById("forest");f.innerHTML="";
+  let unit=1;while(trees/unit>100)unit*=10;const n=Math.min(100,Math.round(trees/unit));
+  el("rect",{x:0,y:200,width:400,height:30,fill:"#9fd08a"},f);
+  for(let i=0;i<n;i++){const c=i%20,r=Math.floor(i/20);const x=12+c*19.5,y=196-r*36;
+    const g=el("g",{transform:`translate(${x},${y})`},f);el("rect",{x:-2,y:-8,width:4,height:8,fill:"#8a5a33"},g);el("path",{d:"M0 -34 L10 -16 L5 -16 L12 -6 L-12 -6 L-5 -16 L-10 -16 Z",fill:["#2f8f5b","#3c9e64","#287a4d"][i%3]},g)}
+  if(n===0){const tx=el("text",{x:200,y:110,"text-anchor":"middle",class:"lbl",fill:"#5a7383"},f);tx.textContent="실천을 고르면 숲이 자라요"}
+  document.getElementById("forest-cap").textContent=n?`나무 그림 1개 = 소나무 ${nf.format(unit)}그루 · 모두 ${treeStr(kg)}`:"";
+  const note=document.getElementById("scale-note");
+  note.innerHTML=L.n?`<p>‘${L.label}’은 학교 실천은 한 반(약 24명), 우리 집 실천은 한 가구(평균 약 2.2명)·자동차 1대가 함께 나눠 실천한다고 보고 계산한 어림값이에요.</p>`:
+   L.guide===1?`<p>안내서는 “많은 사람이 함께하면 이만큼 효과가 있다”는 것을 보여 주려고 10% 참여 효과를 제시했어요. 10%는 목표가 아니라 예시예요. 학교 실천은 전국 초·중·고 11,801개 학교의 10%, 우리 집 실천은 전국 인구·가구·차량의 10%를 기준으로 해요.</p>`:
+   L.guide===10?`<p>‘전국 모두’는 안내서의 10% 참여 효과에 10을 곱한 단순 추정이에요. 실제로는 이미 실천하는 사람도 있어서 이보다 작을 수 있어요.</p>`:
+   `<p>내가 고른 실천을 우리 반(학교 실천)과 우리 집(가정 실천) 단위로 1년 동안 했을 때의 양이에요.</p>`;
+}
+function renderResult(){
+  const t=totals(),done=ACTS.filter(a=>status(a)==="done");
+  document.getElementById("r-kg").textContent=kgStr(t.kg);
+  document.getElementById("r-kg2").textContent=t.kg>0?"자동차로 약 "+nf.format(Math.round(t.kg/KG_PER_KM))+"km를 덜 달린 만큼":"실천을 골라 보세요";
+  document.getElementById("r-tree").textContent=treeStr(t.kg);
+  document.getElementById("r-won").textContent=wonStr(t.won);
+  document.getElementById("r-cnt").textContent=done.length+" / "+ACTS.length;
+  document.getElementById("r-cnt2").textContent=`학교 ${done.filter(a=>a.scene==="school").length}개 · 우리 집 ${done.filter(a=>a.scene==="home").length}개`;
+  drawEarth(Math.min(1,Math.sqrt(t.kg/MAXKG)*0.6+done.length/ACTS.length*0.4));
+  // 분야 막대
+  const by={};Object.keys(CATS).forEach(c=>by[c]=0);ACTS.forEach(a=>by[a.cat]+=calc(a).kg);
+  const mx=Math.max(1,...Object.values(by));const bars=document.getElementById("r-bars");bars.innerHTML="";
+  Object.keys(CATS).forEach(c=>{const d=document.createElement("div");d.className="bar";d.innerHTML=`<span>${{에너지:"에너지 절약",소비:"지속가능한 소비",이동:"친환경 이동",자원순환:"자원 절약·재활용",자연:"자연보호"}[c]}</span><div class="track"><div class="fill" style="width:${by[c]/mx*100}%;background:${CATS[c]}"></div></div><b>${kgStr(by[c])}</b>`;bars.appendChild(d)});
+  // 표
+  const tb=document.getElementById("r-table");tb.innerHTML="";
+  const rows=done.slice().sort((x,y)=>calc(y).kg-calc(x).kg);
+  if(!rows.length)tb.innerHTML=`<tr><td colspan="5" style="color:var(--muted)">아직 고른 실천이 없어요. 학교나 우리 집 탭에서 실천을 골라 보세요.</td></tr>`;
+  rows.forEach(a=>{const r=calc(a);const tr=document.createElement("tr");tr.innerHTML=`<td>${a.scene==="school"?"학교":"우리 집"}</td><td>${a.title}</td><td><span class="cat" style="background:${CATS[a.cat]}">${a.cat}</span></td><td class="n">${kgStr(r.kg)}</td><td class="n">${tStr(r.nat)}</td>`;tb.appendChild(tr)});
+  if(rows.length){const tr=document.createElement("tr");tr.innerHTML=`<td></td><td><b>합계</b></td><td></td><td class="n"><b>${kgStr(t.kg)}</b></td><td class="n"><b>${tStr(t.nat)}</b></td>`;tb.appendChild(tr)}
+  const todo=ACTS.filter(a=>status(a)!=="done"),tbx=document.getElementById("r-todo");tbx.innerHTML="";
+  document.getElementById("r-todo-wrap").style.display=todo.length?"":"none";
+  todo.forEach(a=>{const b=document.createElement("button");b.className="actbtn";b.style.width="auto";b.innerHTML=`<span class="num">${a.n}</span><span>${a.scene==="school"?"학교":"집"} · ${a.title}</span>`;b.addEventListener("click",()=>{go(a.scene);select(a.scene,a.id)});tbx.appendChild(b)});
+  drawLevels();drawScale();updateCard();
+}
+function updateCard(){
+  const name=document.getElementById("p-name").value.trim(),txt=document.getElementById("p-text").value.trim(),t=totals();
+  document.getElementById("pc-who").textContent=(name||"이름을 적어 주세요")+" · 1년에 CO₂ "+kgStr(t.kg)+" 줄이기 (소나무 "+treeStr(t.kg)+")";
+  const top=ACTS.filter(a=>status(a)==="done").sort((x,y)=>calc(y).kg-calc(x).kg).slice(0,3);
+  document.getElementById("pc-list").innerHTML=top.length?top.map(a=>`<li>${a.title} (${kgStr(calc(a).kg)})</li>`).join(""):"<li>실천을 골라 보세요</li>";
+  document.getElementById("pc-say").textContent="“"+(txt||"다짐을 적어 주세요")+"”";
+}
+document.getElementById("p-name").addEventListener("input",updateCard);
+document.getElementById("p-text").addEventListener("input",updateCard);
+document.getElementById("p-copy").addEventListener("click",async()=>{
+  const s=document.getElementById("p-status");
+  const text=[document.querySelector("#p-card h4").textContent,document.getElementById("pc-who").textContent,...[...document.querySelectorAll("#pc-list li")].map(l=>"- "+l.textContent),document.getElementById("pc-say").textContent].join("\n");
+  try{await navigator.clipboard.writeText(text);s.textContent="복사했어요! 학급 게시판이나 공책에 붙여 넣어 보세요."}catch(e){s.textContent="복사가 막혀 있어요. 카드 글을 직접 드래그해서 복사해 주세요."}
+});
+const resetBtn=document.getElementById("reset");let resetArmed=false;
+resetBtn.addEventListener("click",()=>{if(!resetArmed){resetArmed=true;resetBtn.textContent="정말 지울까요? 한 번 더 누르기";setTimeout(()=>{resetArmed=false;resetBtn.textContent="처음부터 다시 하기"},4000);return}
+  resetArmed=false;resetBtn.textContent="처음부터 다시 하기";resetAll();save();renderPanel("school");renderPanel("home");updateScene();updateLists();updateTotals();renderResult()});
+
+/* ---------- 탭 ---------- */
+function go(v){
+  ["school","home","result"].forEach(x=>{document.getElementById("view-"+x).classList.toggle("hide",x!==v);document.getElementById("tab-"+x).setAttribute("aria-selected",x===v)});
+  if(v==="result")renderResult();
+  if(location.hash!=="#"+v)history.replaceState(null,"","#"+v);
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>go(t.dataset.view)));
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(["school","home","result"].includes(h))go(h)});
+
+/* ---------- 시작 ---------- */
+buildStatic();buildLists();renderPanel("school");renderPanel("home");updateScene();updateLists();updateTotals();
+const h=location.hash.slice(1);go(["school","home","result"].includes(h)?h:"school");
+})();
+</script>
+</body>
+</html>
