@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>지구를 지키는 하루</title>
+<title>남산초등학교 · 지구를 지키는 하루</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
@@ -203,6 +203,24 @@ th.n{text-align:right}
 footer{font-size:13px;color:var(--muted);padding:0 0 30px}
 footer p{margin:0 0 4px;max-width:90ch}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* 자원과 에너지 학습 카드 */
+.resource-panel{margin:14px 0;padding:14px;border:2px solid var(--line);border-radius:12px;background:#f6faf7}
+.resource-panel h4{font-size:19px;margin-bottom:6px}
+.resource-panel p{font-size:13px;margin:6px 0;color:var(--muted)}
+.resource-effects{display:grid;gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.resource-effects li{font-size:14px;line-height:1.55}
+.resource-tag{display:inline-block;border-radius:7px;padding:1px 7px;margin-right:4px;font-weight:bold;font-size:12px;background:#e0eaf0;color:#294a60}
+.resource-tag.water{background:#dceffb;color:#245e80}.resource-tag.forest{background:#d8f0e1;color:#236143}
+.resource-tag.mineral{background:#eee3da;color:#765038}.resource-tag.energy{background:#fdf0d2;color:#775006}
+.resource-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+.resource-card{border:2px solid var(--line);border-radius:14px;padding:16px;background:#fff;min-width:0}
+.resource-card h4{font-size:21px}.resource-card b{display:block;font-size:22px;margin-top:8px;color:var(--leaf)}
+.resource-card p,.resource-card li{font-size:14px;overflow-wrap:anywhere}.resource-card ul{padding-left:18px;margin-bottom:0}
+.resource-guide{margin:12px 0;color:var(--muted);font-size:14px}.resource-guide summary{cursor:pointer;font-weight:bold}
+.resource-cell{min-width:220px;max-width:360px;white-space:normal;font-size:13px}
+@media(max-width:900px){.resource-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.resource-cards{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -210,7 +228,7 @@ footer p{margin:0 0 4px;max-width:90ch}
   <div class="wrap">
     <div class="brand">
       <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#5bb0d8"/><path d="M10 16c4-4 9-2 10 2s-3 6 0 9 7 0 8 4-4 7-8 6" fill="#3f9e64"/><path d="M26 8c3 1 6 4 6 7s-4 3-5 1-4-3-1-8z" fill="#3f9e64"/><circle cx="17" cy="21" r="1.6" fill="#1e3a4c"/><circle cx="27" cy="21" r="1.6" fill="#1e3a4c"/><path d="M17 27q5 4 10 0" stroke="#1e3a4c" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-      <div><h1>지구를 지키는 하루</h1><small>학교와 우리 집에서 해 보는 탄소중립 실천 시뮬레이션</small></div>
+      <div><h1>지구를 지키는 하루</h1><small>남산초등학교 · 자원과 에너지를 아끼는 탄소중립 실천</small></div>
     </div>
     <div class="score" aria-live="polite">
       <div class="chip co2"><b id="t-kg">0kg</b><span>1년에 줄인 CO₂</span></div>
@@ -231,8 +249,8 @@ footer p{margin:0 0 4px;max-width:90ch}
   <section class="view" id="view-school" role="tabpanel" aria-labelledby="tab-school">
     <div class="intro">
       <div>
-        <h2>우리 학교에서 하루를 보내요</h2>
-        <p>그림 속 번호를 누르거나 아래 목록에서 골라 실천해 보세요. 고를 때마다 그림이 바뀌고, 1년 동안 줄어드는 이산화탄소(CO₂) 양이 계산돼요.</p>
+        <h2>남산초등학교에서 하루를 보내요</h2>
+        <p>그림 속 번호를 누르거나 아래 목록에서 골라 실천해 보세요. 고를 때마다 그림이 바뀌고, 1년 동안 줄어드는 이산화탄소(CO₂) 양과 함께 아끼는 자원·에너지를 알아봐요.</p>
       </div>
     </div>
     <div class="stage">
@@ -255,7 +273,7 @@ footer p{margin:0 0 4px;max-width:90ch}
   <rect x="168" y="96" width="464" height="340" fill="#f2e3c9" stroke="#b99a6e" stroke-width="3"/>
   <rect x="160" y="86" width="480" height="20" fill="#c9714c"/>
   <rect x="330" y="98" width="140" height="30" rx="6" fill="#fff" stroke="#b99a6e"/>
-  <text x="400" y="118" text-anchor="middle" class="lbl">푸른별 초등학교</text>
+  <text x="400" y="118" text-anchor="middle" class="lbl">남산초등학교</text>
   <line x1="168" y1="287" x2="632" y2="287" stroke="#b99a6e" stroke-width="4"/>
   <line x1="442" y1="136" x2="442" y2="287" stroke="#b99a6e" stroke-width="3"/>
   <line x1="404" y1="287" x2="404" y2="436" stroke="#b99a6e" stroke-width="3"/>
@@ -471,6 +489,17 @@ footer p{margin:0 0 4px;max-width:90ch}
       </div>
     </div>
 
+    <div class="sec" aria-labelledby="resource-heading">
+      <h3 id="resource-heading">탄소와 함께, 어떤 자원과 에너지를 아꼈을까?</h3>
+      <p>내가 고른 실천을 물·산림·광물 자원과 에너지로 나누어 살펴봐요. 숫자는 해당 분류와 연결된 실천 개수이며, 절약한 양이 아니에요. 한 실천이 여러 분류에 포함될 수 있어요.</p>
+      <div class="resource-cards" id="r-resources"></div>
+      <details class="resource-guide"><summary>자원과 에너지, 어떻게 구분할까요?</summary>
+        <p><b>물 자원</b>은 씻기·세탁·농사 등에 쓰는 물, <b>산림 자원</b>은 나무와 종이의 원료인 목재·펄프예요. <b>광물 자원</b>에는 금속과 유리 원료뿐 아니라 석유·석탄·천연가스 같은 에너지 광물도 포함해요.</p>
+        <p><b>에너지</b>는 전기, 냉난방·온수에 쓰는 열, 이동에 쓰는 연료의 에너지로 구분해요. 예를 들어 석유는 자원이고, 휘발유를 태워 자동차를 움직이는 힘은 에너지예요. 전기를 아끼면 화력발전에 쓰이는 연료도 간접적으로 아낄 수 있어요.</p>
+        <p>자원·에너지 효과는 실천의 원리를 설명한 것이에요. 제품·설비·전력 생산 방식에 따라 달라지므로 L·kWh 같은 절약량은 별도로 계산하지 않았어요. 나무 심기는 산림 자원을 ‘절약’하기보다 ‘가꾸는’ 실천이에요.</p>
+      </details>
+    </div>
+
     <div class="sec">
       <h3>어느 분야에서 많이 줄였을까?</h3>
       <p>안내서의 다섯 분야로 나눠 봤어요.</p>
@@ -504,7 +533,7 @@ footer p{margin:0 0 4px;max-width:90ch}
       <h3>내가 고른 실천 한눈에 보기</h3>
       <p>‘전국 10%’는 안내서가 제시한 값이에요. 학교 실천은 전국 학교의 10%, 우리 집 실천은 전국 인구·가구·차량의 10%가 참여할 때를 뜻해요.</p>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>장소</th><th>실천</th><th>분야</th><th class="n">나(1년)</th><th class="n">전국 10%가 함께하면</th></tr></thead>
+        <thead><tr><th>장소</th><th>실천</th><th>분야</th><th>자원·에너지 효과</th><th class="n">나(1년)</th><th class="n">전국 10%가 함께하면</th></tr></thead>
         <tbody id="r-table"></tbody>
       </table></div>
       <div id="r-todo-wrap" class="sec" style="margin-top:16px">
@@ -526,7 +555,7 @@ footer p{margin:0 0 4px;max-width:90ch}
           <p class="mini" id="p-status" aria-live="polite"></p>
         </div>
         <div class="card" id="p-card">
-          <h4>🌏 지구 지킴이 다짐 카드</h4>
+          <h4>🌏 남산초등학교 지구 지킴이 다짐 카드</h4>
           <div class="who" id="pc-who">이름을 적어 주세요</div>
           <ul id="pc-list"></ul>
           <p class="say" id="pc-say">“다짐을 적어 주세요”</p>
@@ -536,6 +565,7 @@ footer p{margin:0 0 4px;max-width:90ch}
   </section>
 
   <footer>
+    <p>자원 분류 참고: <a href="https://pubs.usgs.gov/circ/2006/1289/c1289.pdf" target="_blank" rel="noopener">미국 지질조사국(USGS)의 연료·비연료 광물 구분</a>. 자원·에너지 설명은 각 실천의 원리를 바탕으로 정리했어요.</p>
     <p>자료: 「탄소중립 생활 실천 안내서」 본편 가정의 탄생(가정편)·학교의 탄생(학교편)의 실천수칙별 연간 이산화탄소 감축량, 비용 절감액, 10% 참여 효과, 소나무 흡수량(30년생 중부지방 소나무 1그루 9.1kg/년), 배출권 평균 가격(24,574원/t).</p>
     <p>국가 배출량: 환경부 온실가스종합정보센터 2024년 국가 온실가스 잠정배출량(6억 9,158만 t). 자동차 거리는 휘발유 1L당 2.18kg(안내서 배출계수)과 연비 12km/L를 가정해 계산했어요. 모든 숫자는 공부를 돕기 위한 어림값이며 실제 상황에 따라 달라질 수 있어요.</p>
   </footer>
@@ -774,6 +804,65 @@ function calc(a){
 function totals(list){let kg=0,won=0,nat=0,people=0;(list||ACTS).forEach(a=>{const r=calc(a);kg+=r.kg;won+=r.won;nat+=r.nat;people+=r.kg/a.per});return{kg,won,nat,perPerson:people}}
 function status(a){const r=calc(a);if(r.kg>0)return"done";if(S[a.id].touched)return"tried";return""}
 
+/* 각 실천의 자원·에너지 효과. 조건이 있는 항목은 실제 선택에만 반영한다. */
+const RESOURCE_TYPES={
+ water:{label:"물 자원",icon:"💧",desc:"생활·세탁·농사 등에 쓰는 물"},
+ forest:{label:"산림 자원",icon:"🌳",desc:"나무·목재·종이의 원료인 펄프"},
+ mineral:{label:"광물 자원",icon:"🪨",desc:"금속·유리 원료와 석유·석탄·천연가스"},
+ energy:{label:"에너지",icon:"⚡",desc:"전기·열·이동에 쓰이는 에너지"}
+};
+const effect=(type,text,when)=>({type,text,when});
+const checked=i=>v=>Boolean(v[i]);
+const sorted=(...indices)=>v=>indices.some(i=>v[i]===byId.s_recycle.sortItems[i][1]);
+const electricity=use=>[
+ effect("energy",use+"에 쓰는 전기를 아껴요."),
+ effect("mineral","전기 사용을 줄이면 화력발전에 쓰이는 석탄·천연가스도 간접적으로 아낄 수 있어요.")
+];
+const travel=[effect("mineral","자동차 연료의 원료인 석유를 아껴요."),effect("energy","자동차 이동에 쓰이는 휘발유·경유 등의 연료 에너지를 줄여요.")];
+const food=[effect("water","식재료를 기르고 씻는 데 쓰인 물이 음식과 함께 낭비되지 않게 해요."),effect("energy","식재료의 생산·운송·냉장·조리에 들어간 에너지가 낭비되지 않게 해요.")];
+const heating=[effect("energy","냉방에 쓰는 전기와 난방에 쓰는 열에너지를 아껴요."),effect("mineral","난방이나 발전에 쓰이는 천연가스·석탄 등의 연료 자원을 아낄 수 있어요. 설비에 따라 달라요.")];
+const RESOURCE_EFFECTS={
+ s_light:electricity("교실 조명"),s_standby:electricity("전자기기의 대기 상태 유지"),s_temp:heating,
+ s_paper:[effect("forest","종이의 원료인 나무·펄프를 아껴요."),effect("water","새 종이를 만드는 데 필요한 물 사용을 줄이는 데 도움이 돼요."),effect("energy","종이 생산과 인쇄에 쓰이는 에너지를 줄여요.")],
+ s_food:food,
+ s_cup:[effect("forest","일회용 종이컵의 원료인 나무·펄프를 아껴요."),effect("energy","텀블러를 오래 반복 사용하면 일회용 컵 생산·폐기에 드는 에너지를 줄이는 데 도움이 돼요. 세척에도 물과 에너지가 들어요.")],
+ s_restroom:[effect("forest","손수건으로 종이 타월을 대신하면 나무·펄프를 아껴요.",checked(0)),effect("energy","손수건으로 핸드 드라이어를 대신하면 건조에 쓰는 전기를 아껴요.",checked(0)),effect("water","양치컵을 쓰면 양치하는 동안 흘려보내는 물을 줄여요.",checked(1)),effect("water","절수 설비는 손 씻기 등에 사용하는 물을 줄여요.",checked(2)),effect("energy","물을 덜 쓰면 정수·급수·하수 처리에 필요한 전기도 줄일 수 있어요.",v=>v[1]||v[2])],
+ s_recycle:[effect("forest","종이·공책을 재활용하면 새 종이에 필요한 나무·펄프 사용을 줄일 수 있어요.",sorted(0,1)),effect("mineral","플라스틱·비닐을 알맞게 분리하면 원료인 석유를 다시 활용하는 데 도움이 돼요.",sorted(2,3,4)),effect("mineral","캔·유리를 재활용하면 금속 광석과 유리 원료인 규사 등의 새 원료 사용을 줄일 수 있어요.",sorted(5,6)),effect("energy","재활용 가능한 재료를 되쓰면 새 원료를 채취·가공하는 에너지를 줄이는 데 도움이 돼요.",sorted(0,1,2,3,4,5,6))],
+ s_tree:[effect("forest","나무를 심고 돌보며 산림 자원을 가꿔요. 나무와 함께 생물의 보금자리도 늘어나요.")],s_walk:travel,
+ h_light:electricity("집 안 조명"),h_blanket:electricity("전기장판 가열"),
+ h_faucet:[effect("water","샤워·세면에 사용하는 수돗물을 아껴요."),effect("energy","정수·급수에 쓰는 전기와 온수를 데우는 열에너지를 아껴요."),effect("mineral","가스 온수를 사용하는 집에서는 물을 데우는 천연가스도 아껴요.")],
+ h_tv:electricity("텔레비전 시청"),h_standby:electricity("가전제품의 대기 상태 유지"),
+ h_wipes:[effect("mineral","플라스틱 섬유가 든 물티슈를 덜 쓰면 섬유 원료인 석유 사용을 줄일 수 있어요."),effect("energy","행주·손수건을 오래 쓰면 일회용 물티슈의 생산·폐기 부담을 줄여요. 세탁에도 물과 에너지가 들어요.")],
+ h_rice:electricity("밥솥 보온"),
+ h_dish:[effect("water","설거지할 때 계속 흘려보내던 수돗물을 아껴요."),effect("energy","정수·급수에 필요한 전기를 줄이고, 온수를 쓴다면 물을 데우는 에너지도 아껴요.")],
+ h_food:food,h_fridge:electricity("냉장고 냉각"),
+ h_laundry:[effect("water","세탁과 헹굼에 사용하는 물을 아껴요."),effect("energy","세탁기 모터를 돌리는 전기를 아껴요. 온수 세탁이라면 물을 데우는 에너지도 줄어요.")],h_temp:heating,
+ h_market:[effect("mineral","장바구니를 반복 사용하면 비닐봉투 원료인 석유를 아껴요.",checked(0)),effect("energy","장바구니를 오래 쓰면 일회용 봉투 생산·폐기에 쓰는 에너지를 줄이는 데 도움이 돼요.",checked(0)),effect("energy","지역에서 난 제철 식재료는 장거리 운송과 재배 시 냉난방 에너지를 줄이는 데 도움이 돼요. 재배·운송 방식에 따라 달라요.",checked(1)),effect("mineral","장거리 운송에 쓰이는 석유계 연료 사용을 줄이는 데 도움이 돼요.",checked(1))],
+ h_delivery:[effect("mineral","일회용 플라스틱 수저·용기를 덜 쓰면 원료인 석유를 아껴요."),effect("forest","일회용 나무젓가락·종이 포장을 덜 쓰면 목재·펄프를 아껴요."),effect("energy","다회용기를 오래 반복 사용하면 일회용품의 생산·폐기 에너지를 줄이는 데 도움이 돼요. 세척 에너지도 함께 생각해요.")],
+ h_bus:[effect("mineral","자가용 대신 대중교통을 이용하면 여러 사람이 이동에 필요한 석유계 연료를 나눠 쓸 수 있어요."),effect("energy","버스·지하철을 함께 타면 1인당 이동 에너지를 줄이는 데 도움이 돼요. 이용 인원과 교통수단에 따라 달라요.")],h_bike:travel,h_eco:travel
+};
+function resourceEffects(a,preview=false){
+ const all=RESOURCE_EFFECTS[a.id]||[];
+ if(preview)return all;
+ if(calc(a).kg<=0)return [];
+ return all.filter(e=>!e.when||e.when(S[a.id].v));
+}
+function resourceTable(a){
+ const effects=resourceEffects(a);
+ return effects.length?effects.map(e=>`<div><span class="resource-tag ${e.type}">${RESOURCE_TYPES[e.type].label}</span>${e.text}</div>`).join(""):"자원·에너지 절약 효과로 집계하지 않은 선택이에요.";
+}
+function renderResourcePanel(sc){
+ const a=byId[cur[sc]],active=calc(a).kg>0,items=resourceEffects(a,!active),box=document.getElementById("resources-"+sc);
+ box.innerHTML=`<h4>${active?"지금 선택으로 아끼고 가꾸는 것":"이 실천으로 아끼고 가꿀 수 있어요"}</h4><p>${active?"선택한 내용에 해당하는 효과예요.":"아래는 실천했을 때의 효과예요. 선택하면 해당 효과가 결과표에 모여요."}</p><ul class="resource-effects">${items.map(e=>`<li><span class="resource-tag ${e.type}">${RESOURCE_TYPES[e.type].icon} ${RESOURCE_TYPES[e.type].label}</span>${e.text}</li>`).join("")}</ul>${active&&!items.length?"<p>올바른 일반쓰레기 배출이에요. 재활용 자원 절약으로는 집계하지 않아요.</p>":""}`;
+}
+function renderResourceSummary(){
+ const box=document.getElementById("r-resources");
+ box.innerHTML=Object.entries(RESOURCE_TYPES).map(([key,t])=>{
+  const actions=ACTS.filter(a=>resourceEffects(a).some(e=>e.type===key));
+  return `<article class="resource-card"><h4>${t.icon} ${t.label}</h4><p>${t.desc}</p><b>${actions.length}개 실천</b>${actions.length?`<ul>${actions.map(a=>`<li>${a.scene==="school"?"학교":"집"} · ${a.title}</li>`).join("")}</ul>`:"<p>이 분류와 연결된 실천을 아직 고르지 않았어요.</p>"}</article>`;
+ }).join("");
+}
+
 /* ---------- 숫자 표시 ---------- */
 const nf=new Intl.NumberFormat("ko-KR");
 function kgStr(kg){if(kg>=1e6)return tStr(kg/1000);if(kg>=1000)return nf.format(Math.round(kg/100)/10)+"t";if(kg>=10)return nf.format(Math.round(kg))+"kg";if(kg>0)return (Math.round(kg*10)/10)+"kg";return"0kg"}
@@ -875,6 +964,7 @@ function renderPanel(sc){
   box.innerHTML=`<div class="place"><span class="cat" style="background:${CATS[a.cat]}">${a.cat}</span>${a.n}번 · ${a.place}</div>
     <h3>${a.title}</h3><p class="q">${a.q}</p><div class="body" id="body-${sc}"></div>
     <div class="result" id="res-${sc}"></div>
+    <section class="resource-panel" id="resources-${sc}" aria-label="자원과 에너지 효과"></section>
     <details class="more"><summary>더 알아보기</summary><p>${a.info}</p><p>💡 ${a.tip}</p></details>
     <div class="nav"><button class="btn" id="prev-${sc}" ${idx===0?"disabled":""}>← 이전</button>
     ${idx<list.length-1?`<button class="btn primary" id="next-${sc}">다음 실천 →</button>`:`<button class="btn go" id="next-${sc}">${sc==="school"?"우리 집으로 →":"결과 보기 →"}</button>`}</div>`;
@@ -943,6 +1033,7 @@ function renderPanel(sc){
   updateResult(sc);
 }
 function updateResult(sc){
+  renderResourcePanel(sc);
   const a=byId[cur[sc]],r=calc(a),box=document.getElementById("res-"+sc);
   const unitTxt={학급:"우리 반(1학급)",가구:"우리 집(1가구)",인:"나 1명",대:"우리 집 1대",그루:"내가 심은 나무"}[a.unit];
   box.innerHTML=`<div class="r"><span>1년에 줄어드는 CO₂ · ${unitTxt}</span><b style="color:var(--leaf)">${kgStr(r.kg)}</b></div>
@@ -979,7 +1070,7 @@ function drawEarth(score){
 const LEVELS=[
  {id:"me",label:"나 혼자",who:"나와 우리 반·우리 집"},
  {id:"class",label:"우리 반 24명",n:24,who:"우리 반 24명이 모두"},
- {id:"school",label:"우리 학교 480명",n:480,who:"우리 학교 480명이 모두"},
+ {id:"school",label:"남산초등학교 (480명 가정)",n:480,who:"남산초등학교 구성원 480명이 함께한다고 가정하면"},
  {id:"city",label:"10만 명 도시",n:100000,who:"10만 명이 사는 도시 사람 모두"},
  {id:"nat10",label:"전국 10%",guide:1,who:"전국의 10%가 (안내서 기준)"},
  {id:"nat100",label:"전국 모두",guide:10,who:"전국 모두가 (추정)"}];
@@ -1022,6 +1113,7 @@ function renderResult(){
   document.getElementById("r-won").textContent=wonStr(t.won);
   document.getElementById("r-cnt").textContent=done.length+" / "+ACTS.length;
   document.getElementById("r-cnt2").textContent=`학교 ${done.filter(a=>a.scene==="school").length}개 · 우리 집 ${done.filter(a=>a.scene==="home").length}개`;
+  renderResourceSummary();
   drawEarth(Math.min(1,Math.sqrt(t.kg/MAXKG)*0.6+done.length/ACTS.length*0.4));
   // 분야 막대
   const by={};Object.keys(CATS).forEach(c=>by[c]=0);ACTS.forEach(a=>by[a.cat]+=calc(a).kg);
@@ -1030,9 +1122,9 @@ function renderResult(){
   // 표
   const tb=document.getElementById("r-table");tb.innerHTML="";
   const rows=done.slice().sort((x,y)=>calc(y).kg-calc(x).kg);
-  if(!rows.length)tb.innerHTML=`<tr><td colspan="5" style="color:var(--muted)">아직 고른 실천이 없어요. 학교나 우리 집 탭에서 실천을 골라 보세요.</td></tr>`;
-  rows.forEach(a=>{const r=calc(a);const tr=document.createElement("tr");tr.innerHTML=`<td>${a.scene==="school"?"학교":"우리 집"}</td><td>${a.title}</td><td><span class="cat" style="background:${CATS[a.cat]}">${a.cat}</span></td><td class="n">${kgStr(r.kg)}</td><td class="n">${tStr(r.nat)}</td>`;tb.appendChild(tr)});
-  if(rows.length){const tr=document.createElement("tr");tr.innerHTML=`<td></td><td><b>합계</b></td><td></td><td class="n"><b>${kgStr(t.kg)}</b></td><td class="n"><b>${tStr(t.nat)}</b></td>`;tb.appendChild(tr)}
+  if(!rows.length)tb.innerHTML=`<tr><td colspan="6" style="color:var(--muted)">아직 고른 실천이 없어요. 학교나 우리 집 탭에서 실천을 골라 보세요.</td></tr>`;
+  rows.forEach(a=>{const r=calc(a);const tr=document.createElement("tr");tr.innerHTML=`<td>${a.scene==="school"?"학교":"우리 집"}</td><td>${a.title}</td><td><span class="cat" style="background:${CATS[a.cat]}">${a.cat}</span></td><td class="resource-cell">${resourceTable(a)}</td><td class="n">${kgStr(r.kg)}</td><td class="n">${tStr(r.nat)}</td>`;tb.appendChild(tr)});
+  if(rows.length){const tr=document.createElement("tr");tr.innerHTML=`<td></td><td><b>합계</b></td><td></td><td></td><td class="n"><b>${kgStr(t.kg)}</b></td><td class="n"><b>${tStr(t.nat)}</b></td>`;tb.appendChild(tr)}
   const todo=ACTS.filter(a=>status(a)!=="done"),tbx=document.getElementById("r-todo");tbx.innerHTML="";
   document.getElementById("r-todo-wrap").style.display=todo.length?"":"none";
   todo.forEach(a=>{const b=document.createElement("button");b.className="actbtn";b.style.width="auto";b.innerHTML=`<span class="num">${a.n}</span><span>${a.scene==="school"?"학교":"집"} · ${a.title}</span>`;b.addEventListener("click",()=>{go(a.scene);select(a.scene,a.id)});tbx.appendChild(b)});
