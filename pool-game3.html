@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>🎱 포켓볼 물리 실험실</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; touch-action:none;
+    -webkit-user-select:none; user-select:none;
+    -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; }
+
+:root {
+  --gold:#f4a261; --ui-bg:#1a1a2e; --ui-card:#16213e; --accent:#e94560;
+  --text:#ccd6f6; --mute:#8892b0;
+}
+
+html, body {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  overflow:hidden; overscroll-behavior:none;
+  background:var(--ui-bg); color:var(--text);
+  font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+}
+
+/* ════════════════════════════════════════════
+   무대(stage): 항상 1136 x 790 으로 그린 뒤
+   화면 크기에 맞춰 통째로 확대/축소한다.
+   → 어떤 기기에서도 배치가 똑같다.
+════════════════════════════════════════════ */
+#stage {
+  position:absolute; top:0; left:0;
+  width:1136px; height:790px;
+  transform-origin:0 0;
+  visibility:hidden;
+}
+
+/* ── 위쪽 바 ── */
+#topbar {
+  position:absolute; top:12px; left:12px; width:1112px; height:62px;
+  display:flex; align-items:center;
+}
+#topbar > * + * { margin-left:10px; }
+.title { font-size:24px; font-weight:800; color:var(--gold); white-space:nowrap; }
+.chip {
+  height:54px; padding:0 14px; border-radius:12px;
+  background:var(--ui-card); border:2px solid rgba(233,69,96,0.7);
+  display:flex; flex-direction:column; justify-content:center; align-items:center;
+  white-space:nowrap;
+}
+.chip .lbl { font-size:13px; color:var(--mute); line-height:1.2; }
+.chip .val { font-size:22px; font-weight:800; color:var(--gold); line-height:1.2; }
+.chip .val small { font-size:14px; color:var(--mute); font-weight:600; }
+#hearts { font-size:20px; letter-spacing:2px; line-height:1.3; }
+.spacer { flex:1 1 auto; }
+
+.btn {
+  height:54px; padding:0 14px; border:none; border-radius:12px;
+  font-family:inherit; font-size:16px; font-weight:800; color:#fff;
+  cursor:pointer; white-space:nowrap; touch-action:manipulation;
+}
+.btn:active { transform:scale(0.96); opacity:0.85; }
+.btn-toggle { background:#2a3358; color:var(--mute); border:2px solid transparent; }
+.btn-toggle.on { background:#0f3460; color:#fff; border-color:var(--gold); }
+.btn-help  { background:linear-gradient(135deg,#f4a261,#e76f51); }
+.btn-reset { background:linear-gradient(135deg,#e94560,#c62a47); min-width:138px; }
+
+/* ── 당구대 ── */
+#table-wrap {
+  position:absolute; top:82px; left:12px; width:1112px; height:612px;
+  border-radius:26px; box-shadow:0 10px 30px rgba(0,0,0,0.6);
+}
+#c { display:block; width:1112px; height:612px; border-radius:26px; }
+
+#toast {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  font-size:34px; font-weight:800; padding:12px 30px; border-radius:16px;
+  white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.2s;
+  background:rgba(244,162,97,0.96); color:#1a1a2e; z-index:5;
+}
+#toast.foul { background:rgba(233,69,96,0.96); color:#fff; }
+#toast.show { opacity:1; }
+
+/* ── 아래쪽 바 ── */
+#bottombar {
+  position:absolute; top:702px; left:12px; width:1112px; height:76px;
+  display:flex;
+}
+#bottombar > * + * { margin-left:10px; }
+.card {
+  height:76px; border-radius:12px; padding:8px 14px;
+  background:var(--ui-card); border:1px solid rgba(255,255,255,0.08);
+  display:flex; align-items:center;
+}
+.card .lbl { font-size:14px; color:var(--mute); white-space:nowrap; }
+.card .big { font-size:28px; font-weight:800; color:var(--gold); line-height:1.1; white-space:nowrap; }
+.card .big small { font-size:15px; color:var(--mute); font-weight:600; }
+
+#card-force { width:300px; }
+#card-force .col { flex:1 1 auto; margin-right:14px; }
+.bar { margin-top:8px; height:14px; border-radius:7px; background:rgba(255,255,255,0.12); overflow:hidden; }
+#force-fill { height:100%; width:0%; border-radius:7px; background:#4ade80; }
+
+#card-dir { width:170px; }
+#card-dir svg { flex:0 0 auto; margin-right:12px; }
+
+#card-speed { width:300px; flex-direction:column; align-items:flex-start; justify-content:center; }
+#speed-formula { font-size:22px; font-weight:800; color:#fff; white-space:nowrap; margin-top:2px; }
+#speed-formula b { color:var(--gold); font-size:26px; }
+
+#card-weight { width:312px; }
+#card-weight .lbl { margin-right:10px; }
+.seg { flex:1 1 auto; display:flex; }
+.seg button {
+  flex:1 1 0; height:56px; border:2px solid transparent; background:#2a3358; color:var(--mute);
+  font-family:inherit; font-size:15px; font-weight:800; cursor:pointer; touch-action:manipulation;
+  line-height:1.25;
+}
+.seg button small { display:block; font-size:13px; font-weight:600; }
+.seg button:first-child { border-radius:10px 0 0 10px; }
+.seg button:last-child  { border-radius:0 10px 10px 0; }
+.seg button.on { background:#0f3460; color:#fff; border-color:var(--gold); }
+
+/* ── 덮개(도움말 / 결과) ── */
+.overlay {
+  position:absolute; top:0; left:0; width:1136px; height:790px;
+  background:rgba(10,10,25,0.86); z-index:20;
+  display:none; align-items:center; justify-content:center;
+}
+.overlay.show { display:flex; }
+.sheet {
+  width:820px; background:var(--ui-card); border:2px solid var(--gold);
+  border-radius:20px; padding:26px 34px; text-align:center;
+}
+.sheet h2 { font-size:32px; color:var(--gold); margin-bottom:12px; }
+.sheet h3 { font-size:20px; color:#fff; margin:14px 0 6px; text-align:left; }
+.sheet ol, .sheet ul { text-align:left; font-size:19px; line-height:1.65; padding-left:26px; }
+.sheet b { color:var(--gold); }
+.sheet .go {
+  margin-top:20px; height:62px; padding:0 44px; font-size:22px;
+  background:linear-gradient(135deg,#e94560,#c62a47);
+}
+.result-stars { font-size:44px; letter-spacing:8px; }
+.result-num { font-size:64px; font-weight:800; color:#fff; line-height:1.1; }
+.result-msg { font-size:20px; margin-top:6px; }
+
+#rotate-hint {
+  position:absolute; left:0; right:0; bottom:18px; text-align:center;
+  font-size:16px; color:var(--mute); display:none;
+}
+</style>
+</head>
+<body>
+
+<div id="stage">
+
+  <!-- 위쪽 바 -->
+  <div id="topbar">
+    <div class="title">🎱 포켓볼 물리 실험실</div>
+    <div class="chip"><span class="lbl">넣은 공</span><span class="val"><span id="score-val">0</span><small> / 15</small></span></div>
+    <div class="chip"><span class="lbl">샷 수</span><span class="val" id="shots-val">0</span></div>
+    <div class="chip"><span class="lbl">파울 (3번이면 끝!)</span><span id="hearts">❤️❤️❤️</span></div>
+    <div class="spacer"></div>
+    <button class="btn btn-toggle on" id="guide-btn">🎯 조준선</button>
+    <button class="btn btn-toggle on" id="arrow-btn">➡️ 속도 화살표</button>
+    <button class="btn btn-help" id="help-btn">❓ 방법</button>
+    <button class="btn btn-reset" id="reset-btn">🔄 다시 시작</button>
+  </div>
+
+  <!-- 당구대 -->
+  <div id="table-wrap">
+    <canvas id="c"></canvas>
+    <div id="toast"></div>
+  </div>
+
+  <!-- 아래쪽 바 -->
+  <div id="bottombar">
+    <div class="card" id="card-force">
+      <div class="col">
+        <div class="lbl">💪 힘의 크기</div>
+        <div class="bar"><div id="force-fill"></div></div>
+      </div>
+      <div class="big"><span id="force-val">0.0</span><small> / 10</small></div>
+    </div>
+
+    <div class="card" id="card-dir">
+      <svg width="54" height="54" viewBox="0 0 54 54">
+        <circle cx="27" cy="27" r="24" fill="#0f1a33" stroke="#8892b0" stroke-width="2"/>
+        <line x1="27" y1="5" x2="27" y2="9" stroke="#8892b0" stroke-width="2"/>
+        <line x1="27" y1="45" x2="27" y2="49" stroke="#8892b0" stroke-width="2"/>
+        <line x1="5" y1="27" x2="9" y2="27" stroke="#8892b0" stroke-width="2"/>
+        <line x1="45" y1="27" x2="49" y2="27" stroke="#8892b0" stroke-width="2"/>
+        <g id="dial" transform="rotate(0 27 27)">
+          <line x1="27" y1="27" x2="43" y2="27" stroke="#f4a261" stroke-width="4" stroke-linecap="round"/>
+          <polygon points="49,27 40,21 40,33" fill="#f4a261"/>
+        </g>
+        <circle cx="27" cy="27" r="3.5" fill="#fff"/>
+      </svg>
+      <div>
+        <div class="lbl">📐 힘의 방향</div>
+        <div class="big" id="dir-val">0°</div>
+      </div>
+    </div>
+
+    <div class="card" id="card-speed">
+      <div class="lbl">🚀 처음 빠르기 = 힘 ÷ 무게</div>
+      <div id="speed-formula">0.0 ÷ 2 = <b>0.0</b></div>
+    </div>
+
+    <div class="card" id="card-weight">
+      <div class="lbl">⚖️ 공의<br>무게</div>
+      <div class="seg" id="weight-seg">
+        <button data-w="1">가벼움<small>무게 1</small></button>
+        <button data-w="2" class="on">보통<small>무게 2</small></button>
+        <button data-w="4">무거움<small>무게 4</small></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 도움말 -->
+  <div class="overlay show" id="help">
+    <div class="sheet">
+      <h2>🎱 포켓볼 물리 실험실</h2>
+      <h3>🕹️ 치는 방법</h3>
+      <ol>
+        <li>당구대 <b>아무 곳이나</b> 손가락으로 누르세요.</li>
+        <li>누른 채로, 공을 보내고 싶은 방향의 <b>반대쪽으로 당기세요</b>. (큐를 뒤로 당기듯이!)</li>
+        <li>손을 떼면 흰 공이 굴러가요. <b>많이 당길수록 힘이 세져요.</b></li>
+      </ol>
+      <h3>🔬 찾아볼 물리 원리</h3>
+      <ul>
+        <li><b>힘의 방향</b> : 공은 힘을 준 방향으로 움직여요.</li>
+        <li><b>힘의 크기</b> : 힘이 클수록 공이 빠르게 출발해요.</li>
+        <li><b>무게</b> : 같은 힘이라도 무거운 공은 느리게 출발해요.</li>
+        <li><b>충돌</b> : 부딪히면 힘이 전달돼요. 정면으로 맞히면 흰 공은 거의 멈춰요!</li>
+        <li><b>마찰</b> : 굴러가는 공은 마찰 때문에 점점 느려지다 멈춰요.</li>
+      </ul>
+      <button class="btn go" id="help-close">시작하기!</button>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="overlay" id="result">
+    <div class="sheet">
+      <div class="result-stars" id="result-stars">⭐⭐⭐</div>
+      <h2 id="result-title">🏆 ALL CLEAR!</h2>
+      <div class="lbl" style="font-size:18px;color:#8892b0">총 샷 수</div>
+      <div class="result-num" id="result-num">0</div>
+      <div class="result-msg" id="result-msg"></div>
+      <button class="btn go" id="result-retry">🔄 다시 도전!</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="rotate-hint">📱 태블릿을 가로로 돌리면 더 크게 볼 수 있어요</div>
+
+<script>
+(function(){
+'use strict';
+
+// ═══════════════════════════════════════
+//  상수 — 모두 "당구대 좌표"(1000 x 500) 기준.
+//  화면 크기와 상관없이 항상 같은 값이다.
+// ═══════════════════════════════════════
+var SW = 1136, SH = 790;          // 무대 크기
+var W = 1000, H = 500;            // 경기 면
+var F = 56;                       // 나무 테두리 두께
+var CW = W + 2*F, CH = H + 2*F;   // 캔버스 논리 크기
+var R  = 14;                      // 공 반지름
+var G  = 44;                      // 모서리 포켓 입구
+var S  = 33;                      // 가운데 포켓 입구(절반)
+var RP = 30;                      // 포켓 반지름
+var CD = 16;                      // 쿠션 두께
+
+var DT = 1/240;                   // 물리 계산 간격(초) — 기기 주사율과 무관
+var SPEED_UNIT = 300;             // 빠르기 1 = 초당 300칸
+var DECEL = 90;                   // 굴림 마찰
+var DRAG  = 0.7;                  // 속력에 비례하는 저항
+var E_BALL = 0.96;                // 공끼리 튕김 정도
+var E_CUSHION = 0.78;             // 쿠션 튕김 정도
+var MAX_PULL = 260;               // 이만큼 당기면 힘 10
+var MIN_PULL = 24;                // 이보다 적게 당기면 취소
+var MAX_FOULS = 3;
+var TAU = Math.PI*2;
+
+var COLORS = {1:'#f2c230',2:'#2f62c9',3:'#d93a35',4:'#6b3fa8',5:'#f0842c',6:'#2c9a5b',7:'#8c2f2f',8:'#1c1c1c'};
+var RACK = [1, 10,3, 5,8,12, 14,2,11,6, 7,13,4,15,9];
+
+var POCKETS = [
+  {x:2,y:2},{x:W/2,y:-12},{x:W-2,y:2},
+  {x:2,y:H-2},{x:W/2,y:H+12},{x:W-2,y:H-2}
+];
+// 쿠션(직선 구간). n = 경기 면 안쪽을 향하는 방향
+var HS = [
+  {y:0,x1:G,x2:W/2-S,n:1},{y:0,x1:W/2+S,x2:W-G,n:1},
+  {y:H,x1:G,x2:W/2-S,n:-1},{y:H,x1:W/2+S,x2:W-G,n:-1}
+];
+var VS = [
+  {x:0,y1:G,y2:H-G,n:1},{x:W,y1:G,y2:H-G,n:-1}
+];
+
+// ═══════════════════════════════════════
+//  상태
+// ═══════════════════════════════════════
+var $ = function(id){ return document.getElementById(id); };
+var stage = $('stage');
+var canvas = $('c');
+var ctx = canvas.getContext('2d');
+var bg = document.createElement('canvas');
+var K = 1;                        // 캔버스 픽셀 / 논리 좌표
+
+var balls = [], cue = null;
+var state = 'aim';                // 'aim' | 'moving' | 'over'
+var score = 0, shots = 0, fouls = 0;
+var weight = 2;
+var showGuide = true, showArrows = true;
+var firstShotDone = false;
+var drag = null;                  // {id, sx, sy, cx, cy}
+var toastTimer = null, resetTimer = null, resetArmed = false;
+
+// ═══════════════════════════════════════
+//  초기화
+// ═══════════════════════════════════════
+function makeBall(x,y,n,isCue){
+  return {x:x,y:y,vx:0,vy:0,n:n,cue:isCue,out:false,sink:null,sinkT:0};
+}
+function newGame(){
+  balls = [];
+  var gap = 2*R + 0.6, i = 0;
+  for(var row=0;row<5;row++){
+    for(var col=0;col<=row;col++){
+      balls.push(makeBall(730 + row*gap*0.8660254, H/2 + (col-row/2)*gap, RACK[i], false));
+      i++;
+    }
+  }
+  cue = makeBall(250, H/2, 0, true);
+  balls.push(cue);
+  score = 0; shots = 0; fouls = 0;
+  state = 'aim'; drag = null; firstShotDone = false;
+  $('result').classList.remove('show');
+  updateStats();
+  setHUD(0, 0);
+}
+
+// ═══════════════════════════════════════
+//  물리 (1/240초씩 고정 간격으로 계산)
+// ═══════════════════════════════════════
+function hitPoint(b, px, py){
+  var dx=b.x-px, dy=b.y-py, d=Math.sqrt(dx*dx+dy*dy);
+  if(d<R && d>1e-6){
+    var nx=dx/d, ny=dy/d;
+    b.x=px+nx*R; b.y=py+ny*R;
+    var vn=b.vx*nx+b.vy*ny;
+    if(vn<0){ b.vx-=(1+E_CUSHION)*vn*nx; b.vy-=(1+E_CUSHION)*vn*ny; }
+  }
+}
+function cushions(b){
+  var i,s;
+  for(i=0;i<HS.length;i++){
+    s=HS[i];
+    if((b.y-s.y)*s.n < R){
+      if(b.x>=s.x1 && b.x<=s.x2){
+        b.y = s.y + s.n*R;
+        if(b.vy*s.n<0) b.vy = -b.vy*E_CUSHION;
+      } else { hitPoint(b,s.x1,s.y); hitPoint(b,s.x2,s.y); }
+    }
+  }
+  for(i=0;i<VS.length;i++){
+    s=VS[i];
+    if((b.x-s.x)*s.n < R){
+      if(b.y>=s.y1 && b.y<=s.y2){
+        b.x = s.x + s.n*R;
+        if(b.vx*s.n<0) b.vx = -b.vx*E_CUSHION;
+      } else { hitPoint(b,s.x,s.y1); hitPoint(b,s.x,s.y2); }
+    }
+  }
+}
+function pocketFor(b){
+  var best=null, bd=1e9, i, p, d;
+  for(i=0;i<POCKETS.length;i++){
+    p=POCKETS[i]; d=Math.hypot(p.x-b.x,p.y-b.y);
+    if(d<bd){ bd=d; best=p; }
+  }
+  if(bd<RP) return best;
+  if(b.x<-R || b.x>W+R || b.y<-R || b.y>H+R) return best;  // 안전장치
+  return null;
+}
+
+function step(){
+  var i,j,b,a,sp,ns,f,p;
+  for(i=0;i<balls.length;i++){
+    b=balls[i];
+    if(b.out) continue;
+    if(b.sink){
+      b.sinkT += DT/0.22;
+      b.x += (b.sink.x-b.x)*0.06; b.y += (b.sink.y-b.y)*0.06;
+      if(b.sinkT>=1){ b.out=true; b.sink=null; onPocketed(b); }
+      continue;
+    }
+    sp=Math.sqrt(b.vx*b.vx+b.vy*b.vy);
+    if(sp>0){
+      ns = sp - (DECEL + DRAG*sp)*DT;          // 마찰로 점점 느려짐
+      if(ns<=2){ b.vx=0; b.vy=0; }
+      else { f=ns/sp; b.vx*=f; b.vy*=f; }
+      b.x+=b.vx*DT; b.y+=b.vy*DT;
+    }
+    p=pocketFor(b);
+    if(p){ b.sink=p; b.sinkT=0; b.vx=0; b.vy=0; continue; }
+    cushions(b);
+  }
+  // 공끼리 충돌 (무게가 같은 공 → 힘을 주고받음)
+  for(i=0;i<balls.length;i++){
+    a=balls[i]; if(a.out||a.sink) continue;
+    for(j=i+1;j<balls.length;j++){
+      b=balls[j]; if(b.out||b.sink) continue;
+      var dx=b.x-a.x, dy=b.y-a.y;
+      if(dx>2*R||dx<-2*R||dy>2*R||dy<-2*R) continue;
+      var d2=dx*dx+dy*dy;
+      if(d2<4*R*R && d2>1e-8){
+        var d=Math.sqrt(d2), nx=dx/d, ny=dy/d, ov=(2*R-d)/2;
+        a.x-=nx*ov; a.y-=ny*ov; b.x+=nx*ov; b.y+=ny*ov;
+        var rel=(a.vx-b.vx)*nx+(a.vy-b.vy)*ny;
+        if(rel>0){
+          var imp=rel*(1+E_BALL)/2;
+          a.vx-=imp*nx; a.vy-=imp*ny;
+          b.vx+=imp*nx; b.vy+=imp*ny;
+        }
+      }
+    }
+  }
+}
+
+function anyMoving(){
+  for(var i=0;i<balls.length;i++){
+    var b=balls[i];
+    if(!b.out && (b.sink || b.vx!==0 || b.vy!==0)) return true;
+  }
+  return false;
+}
+function remaining(){
+  var n=0;
+  for(var i=0;i<balls.length;i++) if(!balls[i].cue && !balls[i].out) n++;
+  return n;
+}
+
+function onPocketed(b){
+  if(b.cue){
+    fouls++;
+    toast('😱 흰 공이 빠졌어요! ('+fouls+'/'+MAX_FOULS+')', true);
+  } else {
+    score++;
+    toast('🎉 들어갔다!', false);
+  }
+  updateStats();
+}
+
+// 모든 공이 멈췄을 때
+function settle(){
+  if(remaining()===0){ showResult(true); return; }
+  if(cue.out){
+    if(fouls>=MAX_FOULS){ showResult(false); return; }
+    respawnCue();
+  }
+  state='aim';
+}
+function spotFree(x,y){
+  for(var i=0;i<balls.length;i++){
+    var b=balls[i];
+    if(b.out||b.cue) continue;
+    if(Math.hypot(b.x-x,b.y-y) < 2*R+3) return false;
+  }
+  return true;
+}
+function respawnCue(){
+  var x=250, y=H/2, found=false;
+  var ys=[H/2, H/2-70, H/2+70, H/2-140, H/2+140];
+  for(var yi=0; yi<ys.length && !found; yi++){
+    for(var xx=250; xx<=W-60; xx+=30){
+      if(spotFree(xx,ys[yi])){ x=xx; y=ys[yi]; found=true; break; }
+    }
+  }
+  cue.x=x; cue.y=y; cue.vx=0; cue.vy=0;
+  cue.out=false; cue.sink=null; cue.sinkT=0;
+}
+
+// ═══════════════════════════════════════
+//  조준 계산
+// ═══════════════════════════════════════
+function aimInfo(){
+  if(!drag) return null;
+  var px=drag.cx-drag.sx, py=drag.cy-drag.sy;
+  var dist=Math.hypot(px,py);
+  if(dist<1) return {valid:false, dist:dist, force:0, dx:1, dy:0, deg:0, pct:0};
+  var pct=Math.min(dist/MAX_PULL,1);
+  var force=Math.round(pct*100)/10;
+  var dx=-px/dist, dy=-py/dist;                 // 당긴 방향의 반대로 힘이 작용
+  var deg=Math.round(Math.atan2(-dy,dx)*180/Math.PI);
+  if(deg<0) deg+=360;
+  if(deg===360) deg=0;
+  return {valid:dist>=MIN_PULL, dist:dist, force:force, dx:dx, dy:dy, deg:deg, pct:pct};
+}
+
+// 흰 공이 처음 닿는 곳(공 또는 쿠션) 찾기
+function castRay(dx,dy){
+  var best=1e9, hit=null, i, b;
+  for(i=0;i<balls.length;i++){
+    b=balls[i];
+    if(b.cue||b.out||b.sink) continue;
+    var wx=b.x-cue.x, wy=b.y-cue.y;
+    var proj=wx*dx+wy*dy;
+    if(proj<=0) continue;
+    var perp2=wx*wx+wy*wy-proj*proj;
+    if(perp2<4*R*R){
+      var t=proj-Math.sqrt(4*R*R-perp2);
+      if(t>=0 && t<best){ best=t; hit=b; }
+    }
+  }
+  var tx=dx>0?(W-R-cue.x)/dx:(dx<0?(R-cue.x)/dx:1e9);
+  var ty=dy>0?(H-R-cue.y)/dy:(dy<0?(R-cue.y)/dy:1e9);
+  var tw=Math.min(tx,ty);
+  if(hit && best<tw) return {t:best, ball:hit};
+  return {t:Math.max(tw,0), ball:null, nx:(tx<ty?1:0), ny:(tx<ty?0:1)};
+}
+
+// ═══════════════════════════════════════
+//  그리기
+// ═══════════════════════════════════════
+function rrect(c,x,y,w,h,r){
+  c.beginPath();
+  c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.arcTo(x+w,y,x+w,y+r,r);
+  c.lineTo(x+w,y+h-r); c.arcTo(x+w,y+h,x+w-r,y+h,r);
+  c.lineTo(x+r,y+h); c.arcTo(x,y+h,x,y+h-r,r);
+  c.lineTo(x,y+r); c.arcTo(x,y,x+r,y,r); c.closePath();
+}
+
+// 당구대(움직이지 않는 부분)는 한 번만 그려 둔다
+function renderBg(){
+  bg.width=canvas.width; bg.height=canvas.height;
+  var c=bg.getContext('2d'), i, s, p;
+  c.setTransform(K,0,0,K,0,0);
+
+  // 나무 테두리
+  var wood=c.createLinearGradient(0,0,0,CH);
+  wood.addColorStop(0,'#7a4e36'); wood.addColorStop(0.5,'#5c3d2e'); wood.addColorStop(1,'#3e2723');
+  rrect(c,0,0,CW,CH,26); c.fillStyle=wood; c.fill();
+  c.strokeStyle='rgba(0,0,0,0.35)'; c.lineWidth=3;
+  rrect(c,1.5,1.5,CW-3,CH-3,25); c.stroke();
+
+  c.translate(F,F);
+
+  // 다이아몬드 표시
+  c.fillStyle='rgba(244,214,160,0.75)';
+  var dx=[125,250,375,625,750,875], dy=[125,250,375];
+  for(i=0;i<dx.length;i++){
+    c.beginPath(); c.arc(dx[i],-36,3.5,0,TAU); c.fill();
+    c.beginPath(); c.arc(dx[i],H+36,3.5,0,TAU); c.fill();
+  }
+  for(i=0;i<dy.length;i++){
+    c.beginPath(); c.arc(-36,dy[i],3.5,0,TAU); c.fill();
+    c.beginPath(); c.arc(W+36,dy[i],3.5,0,TAU); c.fill();
+  }
+
+  // 펠트
+  c.fillStyle='#14382a';
+  c.fillRect(-CD-2,-CD-2,W+2*CD+4,H+2*CD+4);
+  var felt=c.createRadialGradient(W/2,H/2,40,W/2,H/2,W*0.62);
+  felt.addColorStop(0,'#3a8a64'); felt.addColorStop(1,'#226246');
+  c.fillStyle=felt; c.fillRect(0,0,W,H);
+
+  // 기준선
+  c.strokeStyle='rgba(255,255,255,0.10)'; c.lineWidth=2;
+  c.beginPath(); c.moveTo(250,0); c.lineTo(250,H); c.stroke();
+  c.fillStyle='rgba(255,255,255,0.22)';
+  c.beginPath(); c.arc(250,H/2,4,0,TAU); c.fill();
+  c.beginPath(); c.arc(730,H/2,4,0,TAU); c.fill();
+
+  // 쿠션
+  function cush(ax,ay,bx,by,nx,ny){
+    var tx=(bx-ax)/Math.hypot(bx-ax,by-ay), ty=(by-ay)/Math.hypot(bx-ax,by-ay);
+    c.beginPath();
+    c.moveTo(ax,ay); c.lineTo(bx,by);
+    c.lineTo(bx+tx*10-nx*CD, by+ty*10-ny*CD);
+    c.lineTo(ax-tx*10-nx*CD, ay-ty*10-ny*CD);
+    c.closePath();
+    c.fillStyle='#2c7556'; c.fill();
+    c.strokeStyle='rgba(255,255,255,0.22)'; c.lineWidth=1.5;
+    c.beginPath(); c.moveTo(ax,ay); c.lineTo(bx,by); c.stroke();
+  }
+  for(i=0;i<HS.length;i++){ s=HS[i]; cush(s.x1,s.y,s.x2,s.y,0,s.n); }
+  for(i=0;i<VS.length;i++){ s=VS[i]; cush(s.x,s.y1,s.x,s.y2,s.n,0); }
+
+  // 포켓
+  for(i=0;i<POCKETS.length;i++){
+    p=POCKETS[i];
+    c.beginPath(); c.arc(p.x,p.y,RP,0,TAU);
+    c.fillStyle='#2a1a14'; c.fill();
+    c.beginPath(); c.arc(p.x,p.y,RP-4,0,TAU);
+    c.fillStyle='#050505'; c.fill();
+  }
+}
+
+function arrow(x1,y1,x2,y2,color,width,head){
+  var ang=Math.atan2(y2-y1,x2-x1);
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=width; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x1,y1);
+  ctx.lineTo(x2-Math.cos(ang)*head*0.7, y2-Math.sin(ang)*head*0.7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-head*Math.cos(ang-0.45), y2-head*Math.sin(ang-0.45));
+  ctx.lineTo(x2-head*Math.cos(ang+0.45), y2-head*Math.sin(ang+0.45));
+  ctx.closePath(); ctx.fill();
+}
+
+function drawBall(b){
+  var r=R, alpha=1;
+  if(b.sink){ r=R*(1-0.55*b.sinkT); alpha=Math.max(1-0.7*b.sinkT,0); }
+  ctx.save(); ctx.globalAlpha=alpha;
+  if(!b.sink){
+    ctx.beginPath(); ctx.arc(b.x+2.5,b.y+3.5,r,0,TAU);
+    ctx.fillStyle='rgba(0,0,0,0.30)'; ctx.fill();
+  }
+  ctx.beginPath(); ctx.arc(b.x,b.y,r,0,TAU);
+  if(b.cue){ ctx.fillStyle='#f7f5ee'; ctx.fill(); }
+  else if(b.n<=8){ ctx.fillStyle=COLORS[b.n]; ctx.fill(); }
+  else {
+    ctx.fillStyle='#f7f5ee'; ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.fillStyle=COLORS[b.n-8];
+    ctx.fillRect(b.x-r,b.y-r*0.58,2*r,r*1.16);
+    ctx.restore();
+  }
+  if(!b.cue){
+    ctx.beginPath(); ctx.arc(b.x,b.y,r*0.55,0,TAU);
+    ctx.fillStyle='#fff'; ctx.fill();
+    ctx.fillStyle='#111';
+    ctx.font='bold '+(r*0.72).toFixed(1)+'px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(String(b.n), b.x, b.y+0.5);
+  }
+  var g=ctx.createRadialGradient(b.x-r*0.35,b.y-r*0.4,r*0.1,b.x,b.y,r);
+  g.addColorStop(0,'rgba(255,255,255,0.45)');
+  g.addColorStop(0.45,'rgba(255,255,255,0)');
+  g.addColorStop(1,'rgba(0,0,0,0.32)');
+  ctx.beginPath(); ctx.arc(b.x,b.y,r,0,TAU); ctx.fillStyle=g; ctx.fill();
+  ctx.restore();
+}
+
+function drawAim(a){
+  var col='hsl('+Math.round(120-120*a.pct)+',90%,58%)';
+
+  // 손가락으로 당긴 만큼 큐가 뒤로 물러난다
+  var back=R+8+a.pct*70;
+  var sx=cue.x-a.dx*back, sy=cue.y-a.dy*back;
+  ctx.lineCap='round';
+  ctx.strokeStyle='#d9b382'; ctx.lineWidth=7;
+  ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx-a.dx*300,sy-a.dy*300); ctx.stroke();
+  ctx.strokeStyle='#5a3a22'; ctx.lineWidth=8;
+  ctx.beginPath(); ctx.moveTo(sx-a.dx*200,sy-a.dy*200); ctx.lineTo(sx-a.dx*300,sy-a.dy*300); ctx.stroke();
+  ctx.strokeStyle='#e8f1ff'; ctx.lineWidth=7;
+  ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx-a.dx*8,sy-a.dy*8); ctx.stroke();
+
+  if(!a.valid){
+    label(cue.x, cue.y-R-22, '조금 더 당겨요 (지금 놓으면 취소)', '#fff');
+    return;
+  }
+
+  // 조준선: 처음 닿는 곳까지
+  if(showGuide){
+    var h=castRay(a.dx,a.dy);
+    var gx=cue.x+a.dx*h.t, gy=cue.y+a.dy*h.t;
+    ctx.save();
+    ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=2; ctx.setLineDash([8,8]);
+    ctx.beginPath(); ctx.moveTo(cue.x,cue.y); ctx.lineTo(gx,gy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(gx,gy,R,0,TAU); ctx.stroke();
+    if(h.ball){
+      var nx=(h.ball.x-gx)/(2*R), ny=(h.ball.y-gy)/(2*R);
+      arrow(h.ball.x,h.ball.y,h.ball.x+nx*85,h.ball.y+ny*85,'rgba(244,162,97,0.95)',3,11);
+      var dn=a.dx*nx+a.dy*ny, tx=a.dx-dn*nx, ty=a.dy-dn*ny, tl=Math.hypot(tx,ty);
+      if(tl>0.08){
+        ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(gx,gy); ctx.lineTo(gx+tx/tl*45,gy+ty/tl*45); ctx.stroke();
+      }
+    } else {
+      var rx=h.nx?-a.dx:a.dx, ry=h.ny?-a.dy:a.dy;
+      ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(gx,gy); ctx.lineTo(gx+rx*60,gy+ry*60); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 힘 화살표: 길이 = 힘의 크기, 방향 = 힘의 방향
+  var len=36+a.pct*130;
+  ctx.save();
+  ctx.shadowColor=col; ctx.shadowBlur=10;
+  arrow(cue.x+a.dx*(R+3),cue.y+a.dy*(R+3),cue.x+a.dx*(R+len),cue.y+a.dy*(R+len),col,6,17);
+  ctx.restore();
+  label(cue.x, cue.y+(a.dy>0.3?-1:1)*(R+26), '힘 '+a.force.toFixed(1), col);
+}
+
+function label(x,y,text,color){
+  ctx.font='bold 17px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  var w=ctx.measureText(text).width+18;
+  x=Math.max(w/2+4,Math.min(W-w/2-4,x)); y=Math.max(16,Math.min(H-16,y));
+  rrect(ctx,x-w/2,y-14,w,28,9); ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fill();
+  ctx.fillStyle=color; ctx.fillText(text,x,y+1);
+}
+
+function draw(){
+  var i,b;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.drawImage(bg,0,0);
+  ctx.setTransform(K,0,0,K,K*F,K*F);
+
+  for(i=0;i<balls.length;i++){ b=balls[i]; if(b.sink) drawBall(b); }
+  for(i=0;i<balls.length;i++){ b=balls[i]; if(!b.out && !b.sink) drawBall(b); }
+
+  // 속도 화살표: 길수록 빠르다
+  if(showArrows && state==='moving'){
+    for(i=0;i<balls.length;i++){
+      b=balls[i]; if(b.out||b.sink) continue;
+      var sp=Math.hypot(b.vx,b.vy);
+      if(sp>45){
+        var ux=b.vx/sp, uy=b.vy/sp, L=Math.min(sp*0.05,120)+8;
+        arrow(b.x+ux*(R+2),b.y+uy*(R+2),b.x+ux*(R+L),b.y+uy*(R+L),
+              b.cue?'rgba(255,255,255,0.85)':'rgba(255,230,150,0.85)',3,10);
+      }
+    }
+  }
+
+  if(state==='aim' && drag){
+    var a=aimInfo();
+    if(a && a.dist>=1) drawAim(a);
+  } else if(state==='aim' && !firstShotDone){
+    label(W/2, H-46, '👆 화면을 누른 채 뒤로 당겼다가 놓아 보세요', '#fff');
+  }
+}
+
+// ═══════════════════════════════════════
+//  화면 표시(HUD)
+// ═══════════════════════════════════════
+function setHUD(force, deg){
+  $('force-val').textContent=force.toFixed(1);
+  var fill=$('force-fill');
+  fill.style.width=(force*10)+'%';
+  fill.style.background='hsl('+Math.round(120-12*force)+',90%,55%)';
+  $('dir-val').textContent=deg+'°';
+  $('dial').setAttribute('transform','rotate('+(-deg)+' 27 27)');
+  $('speed-formula').innerHTML=force.toFixed(1)+' ÷ '+weight+' = <b>'+(force/weight).toFixed(1)+'</b>';
+}
+var lastForce=0, lastDeg=0;
+function updateStats(){
+  $('score-val').textContent=score;
+  $('shots-val').textContent=shots;
+  var left=Math.max(MAX_FOULS-fouls,0), s='', i;
+  for(i=0;i<left;i++) s+='❤️';
+  for(i=0;i<Math.min(fouls,MAX_FOULS);i++) s+='🖤';
+  $('hearts').textContent=s;
+}
+function toast(text, isFoul){
+  var el=$('toast');
+  el.textContent=text;
+  el.className=(isFoul?'foul ':'')+'show';
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ el.classList.remove('show'); },1200);
+}
+function showResult(clear){
+  state='over';
+  $('result-num').textContent=shots;
+  if(clear){
+    var stars=shots<=12?3:(shots<=20?2:1);
+    $('result-stars').textContent=['⭐','⭐⭐','⭐⭐⭐'][stars-1];
+    $('result-title').textContent='🏆 ALL CLEAR!';
+    $('result-msg').textContent=['💪 끝까지 해냈어요! 힘과 방향을 더 잘 조절해 볼까요?',
+                                 '👏 훌륭해요! 힘 조절이 좋아요!',
+                                 '🌟 완벽해요! 힘과 방향의 달인!'][stars-1];
+  } else {
+    $('result-stars').textContent='🖤🖤🖤';
+    $('result-title').textContent='😱 파울 3번!';
+    $('result-msg').textContent='공을 '+score+'개 넣었어요. 힘을 조금 줄여서 다시 도전해 봐요!';
+  }
+  $('result').classList.add('show');
+}
+function overlayOpen(){
+  return $('help').classList.contains('show') || $('result').classList.contains('show');
+}
+
+// ═══════════════════════════════════════
+//  입력 (터치 · 펜 · 마우스 공통)
+// ═══════════════════════════════════════
+function toWorld(e){
+  var r=canvas.getBoundingClientRect();
+  return { x:(e.clientX-r.left)/r.width*CW-F, y:(e.clientY-r.top)/r.height*CH-F };
+}
+canvas.addEventListener('pointerdown',function(e){
+  e.preventDefault();
+  if(drag || state!=='aim' || overlayOpen() || cue.out) return;
+  var p=toWorld(e);
+  drag={id:e.pointerId, sx:p.x, sy:p.y, cx:p.x, cy:p.y};
+  try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
+});
+canvas.addEventListener('pointermove',function(e){
+  if(!drag || e.pointerId!==drag.id) return;
+  e.preventDefault();
+  var p=toWorld(e);
+  drag.cx=p.x; drag.cy=p.y;
+  var a=aimInfo();
+  if(a && a.valid){ lastForce=a.force; lastDeg=a.deg; setHUD(a.force,a.deg); }
+});
+function endDrag(e, shoot){
+  if(!drag || e.pointerId!==drag.id) return;
+  e.preventDefault();
+  var a=aimInfo();
+  drag=null;
+  if(!shoot || !a || !a.valid || state!=='aim') return;
+  var v=(a.force/weight)*SPEED_UNIT;            // 처음 빠르기 = 힘 ÷ 무게
+  cue.vx=a.dx*v; cue.vy=a.dy*v;
+  shots++; firstShotDone=true; state='moving';
+  lastForce=a.force; lastDeg=a.deg;
+  setHUD(a.force,a.deg);
+  updateStats();
+}
+canvas.addEventListener('pointerup',function(e){ endDrag(e,true); });
+canvas.addEventListener('pointercancel',function(e){ endDrag(e,false); });
+
+// 화면 끌림 · 확대 · 길게 누르기 메뉴 막기
+document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
+document.addEventListener('gesturestart',function(e){ e.preventDefault(); });
+document.addEventListener('contextmenu',function(e){ e.preventDefault(); });
+document.addEventListener('dblclick',function(e){ e.preventDefault(); });
+
+// ── 버튼 ──
+$('guide-btn').addEventListener('click',function(){
+  showGuide=!showGuide; this.classList.toggle('on',showGuide);
+});
+$('arrow-btn').addEventListener('click',function(){
+  showArrows=!showArrows; this.classList.toggle('on',showArrows);
+});
+$('help-btn').addEventListener('click',function(){
+  $('help-close').textContent='계속하기';
+  $('help').classList.add('show');
+});
+$('help-close').addEventListener('click',function(){ $('help').classList.remove('show'); });
+$('result-retry').addEventListener('click',newGame);
+
+// 다시 시작: 실수로 눌러도 괜찮도록 두 번 눌러야 한다
+$('reset-btn').addEventListener('click',function(){
+  var btn=this;
+  if(resetArmed){
+    clearTimeout(resetTimer); resetArmed=false;
+    btn.textContent='🔄 다시 시작';
+    newGame();
+  } else {
+    resetArmed=true;
+    btn.textContent='한 번 더 누르기!';
+    resetTimer=setTimeout(function(){ resetArmed=false; btn.textContent='🔄 다시 시작'; },2200);
+  }
+});
+
+var segBtns=$('weight-seg').querySelectorAll('button');
+Array.prototype.forEach.call(segBtns,function(btn){
+  btn.addEventListener('click',function(){
+    weight=parseInt(btn.getAttribute('data-w'),10);
+    Array.prototype.forEach.call(segBtns,function(o){ o.classList.toggle('on',o===btn); });
+    setHUD(lastForce,lastDeg);
+  });
+});
+
+// ═══════════════════════════════════════
+//  화면 맞춤: 무대를 통째로 확대/축소.
+//  게임은 절대 초기화하지 않는다.
+// ═══════════════════════════════════════
+function fit(){
+  var vw=window.innerWidth, vh=window.innerHeight;
+  if(!vw||!vh) return;
+  var s=Math.min(vw/SW, vh/SH);
+  var ox=(vw-SW*s)/2, oy=(vh-SH*s)/2;
+  stage.style.transform='translate('+ox+'px,'+oy+'px) scale('+s+')';
+  stage.style.visibility='visible';
+  $('rotate-hint').style.display=(vh>vw*1.15 && oy>60)?'block':'none';
+
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  var k=Math.max(0.5,Math.min(s*dpr,2.5));
+  var bw=Math.round(CW*k), bh=Math.round(CH*k);
+  if(canvas.width!==bw || canvas.height!==bh){
+    canvas.width=bw; canvas.height=bh;
+    K=bw/CW;
+    renderBg();
+  }
+}
+window.addEventListener('resize',fit);
+window.addEventListener('orientationchange',function(){ setTimeout(fit,250); });
+if(window.visualViewport) window.visualViewport.addEventListener('resize',fit);
+
+// ═══════════════════════════════════════
+//  게임 루프
+// ═══════════════════════════════════════
+var lastT=0, acc=0;
+function frame(t){
+  var dt=Math.min((t-lastT)/1000,0.05); lastT=t;
+  if(state==='moving'){
+    acc+=dt;
+    while(acc>=DT){ step(); acc-=DT; }
+    if(!anyMoving()){ acc=0; settle(); }
+  }
+  draw();
+  requestAnimationFrame(frame);
+}
+
+newGame();
+fit();
+requestAnimationFrame(frame);
+
+// 테스트용
+window.__pool={step:step,balls:function(){return balls;},cue:function(){return cue;},anyMoving:anyMoving};
+})();
+</script>
+</body>
+</html>
