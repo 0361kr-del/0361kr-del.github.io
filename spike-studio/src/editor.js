@@ -4,7 +4,8 @@ async function generateBackground({prompt,style}){
  const brief=prompt.trim();if(!brief)throw Error('원하는 배경을 설명해 주세요.');
  const selected=STYLES.find(s=>s.id===style);
  const instruction=style==='none'?brief:`${brief}. 느낌: ${selected.label}.`;
- const data=await generateAI('image',instruction);return 'data:image/png;base64,'+data.image;
+ const usedPrompt=instruction.slice(0,1000);
+ const data=await generateAI('image',usedPrompt);return {image:'data:image/png;base64,'+data.image,prompt:usedPrompt};
 }
 
 /* ---------- 설정 ---------- */
@@ -40,7 +41,7 @@ const PRESETS = [
 ];
 
 /* ---------- 상태 ---------- */
-const state = {step:1, ratio:'4:5', bg:null, texts:[], sel:null, editing:null, style:'none'};
+const state = {step:1, ratio:'4:5', bg:null, imagePrompt:'', texts:[], sel:null, editing:null, style:'none'};
 let scale = 1, uid = 1, hist = [], hidx = -1, editBefore = '';
 const els = new Map();
 const $ = id => document.getElementById(id);
@@ -49,10 +50,10 @@ const fontOf = id => FONTS.find(f=>f.id===id) || FONTS[0];
 const item = id => state.texts.find(t=>t.id===id);
 
 /* ---------- 되돌리기 ---------- */
-function snap(){return {ratio:state.ratio,bg:state.bg,texts:JSON.parse(JSON.stringify(state.texts))}}
+function snap(){return {ratio:state.ratio,bg:state.bg,imagePrompt:state.imagePrompt,texts:JSON.parse(JSON.stringify(state.texts))}}
 function commit(save=true){hist = hist.slice(0,hidx+1); hist.push(snap()); if(hist.length>60) hist.shift(); hidx = hist.length-1; histBtns(); if(save)persistDesign()}
 function restore(s){
-  state.ratio=s.ratio; state.bg=s.bg; state.texts=JSON.parse(JSON.stringify(s.texts));
+  state.ratio=s.ratio; state.bg=s.bg; state.imagePrompt=s.bg?(s.imagePrompt||''):''; state.texts=JSON.parse(JSON.stringify(s.texts));
   if(!item(state.sel)) state.sel=null; state.editing=null;
   renderAll();persistDesign();
 }
@@ -155,7 +156,7 @@ $('styles').onclick=e=>{
 };
 $('gen').onclick=async()=>{
  const btn=$('gen');btn.disabled=true;$('bgloading').hidden=false;
- try{state.bg=await generateBackground({prompt:$('prompt').value,style:state.style});renderBg();commit();btn.textContent='배경 다시 만들기';}
+ try{const generated=await generateBackground({prompt:$('prompt').value,style:state.style});state.bg=generated.image;state.imagePrompt=generated.prompt;renderBg();commit();btn.textContent='배경 다시 만들기';}
  catch(err){toast(err.message||'배경을 만들지 못했어요.');}
  finally{$('bgloading').hidden=true;btn.disabled=false;}
 };
@@ -378,12 +379,12 @@ let renderVersion=0;
 async function enterSend(){
  const version=++renderVersion;$('phwarn').hidden=!state.texts.some(t=>t.ph);
  $('download').disabled=true;refreshGallery(null,'');
- try{const data=await composePoster(1080);if(version!==renderVersion||state.step!==3)return;$('preview').src=data;await refreshGallery(data,state.texts.find(t=>!t.ph)?.text||'');$('download').disabled=false;}
+ try{const data=await composePoster(1080);if(version!==renderVersion||state.step!==3)return;$('preview').src=data;await refreshGallery(data,state.texts.find(t=>!t.ph)?.text||'',state.bg?state.imagePrompt:'');$('download').disabled=false;}
  catch(e){toast('완성 이미지를 만들지 못했습니다. 다시 시도해 주세요.');}
 }
 $('fixph').onclick=()=>{const t=state.texts.find(t=>t.ph);setStep(2);if(t){select(t.id);startEdit(t.id)}};
 $('download').onclick=()=>downloadPoster($('preview').src);
-$('clearbg').onclick=()=>{state.bg=null;renderBg();commit();};
+$('clearbg').onclick=()=>{state.bg=null;state.imagePrompt='';renderBg();commit();};
 $('copy-gen').onclick=async()=>{const instruction=$('copy-prompt').value.trim();if(!instruction){toast('원하는 문구를 설명해 주세요.');return;}stopEdit();const b=$('copy-gen');b.disabled=true;b.textContent='문구 만드는 중…';try{const d=await generateAI('copy',instruction);state.texts=state.texts.filter(t=>!t.ph);newText({text:d.title,font:'black',size:104,y:Math.round(H()*.22),shadow:true});newText({text:d.subtitle,size:46,y:Math.round(H()*.72),shadow:true});renderTexts();commit();toast('AI 문구를 추가했어요. 글자를 눌러 수정하세요.');}catch(e){toast(e.message);}finally{b.disabled=false;b.textContent='AI 문구 만들기';}};
 setupAccess();
 

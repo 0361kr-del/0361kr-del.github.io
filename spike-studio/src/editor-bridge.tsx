@@ -34,14 +34,14 @@ export async function generateAI(kind:'copy'|'image',instruction:string){
 const galleryCanvas=createRef<HTMLCanvasElement>();
 galleryCanvas.current=document.createElement('canvas');
 let galleryRoot:ReturnType<typeof createRoot>|undefined,revision=0;
-export async function refreshGallery(data:string|null,title:string){
+export async function refreshGallery(data:string|null,title:string,imagePrompt=''){
  const current=++revision;
  galleryRoot??=createRoot(document.getElementById('gallery-root')!);
- galleryRoot.render(<ShareToGallery key={current} canvas={galleryCanvas} title={title} disabled/>);
+ galleryRoot.render(<ShareToGallery key={current} canvas={galleryCanvas} title={title} imagePrompt={imagePrompt} disabled/>);
  if(!data)return;
  const img=new Image();await new Promise<void>((resolve,reject)=>{img.onload=()=>resolve();img.onerror=()=>reject(Error('미리보기를 불러오지 못했습니다.'));img.src=data;});
  if(current!==revision)return;
  const c=galleryCanvas.current!;c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext('2d')!.drawImage(img,0,0);
- galleryRoot.render(<ShareToGallery key={current} canvas={galleryCanvas} title={title} disabled={false}/>);
+ galleryRoot.render(<ShareToGallery key={current} canvas={galleryCanvas} title={title} imagePrompt={imagePrompt} disabled={false}/>);
 }
 export function downloadPoster(data:string){if(!data.startsWith('data:image/png;'))return;const a=document.createElement('a');a.href=data;a.download='spike-volleyball.png';a.click();}
