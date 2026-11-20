@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function teacher(uid) {
+      return signedIn() && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/teachers/$(uid))
+        && get(/databases/$(database)/documents/teachers/$(uid)).data.active == true;
+    }
+    function readableSession(id) {
+      let s = get(/databases/$(database)/documents/sessions/$(id)).data;
+      let c = get(/databases/$(database)/documents/classes/$(s.classId)).data;
+      return signedIn() && s.retainUntil > request.time.toMillis()
+        && c.status != 'DELETING'
+        && (request.auth.uid == s.ownerUid || teacher(s.teacherUid));
+    }
+    match /teachers/{uid} { allow get: if signedIn() && request.auth.uid == uid; }
+    match /classes/{id} { allow get: if teacher(resource.data.teacherUid) && resource.data.retainUntil > request.time.toMillis() && resource.data.status != 'DELETING'; }
+    match /sessions/{id} {
+      allow get: if readableSession(id);
+      match /private/{docId} { allow get: if docId == 'student' && readableSession(id); }
+      match /messages/{messageId} { allow get, list: if readableSession(id); }
+    }
+    match /studentAccess/{uid}/sessions/{classId} {
+      allow get: if signedIn() && request.auth.uid == uid;
+    }
+    // No client writes, collection-wide session listing, codes, quotas, or other paths.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
